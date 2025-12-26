@@ -228,8 +228,8 @@
 
     <script type="module">
         // 直接使用本地加载依赖
-        import { FFmpeg } from './static/ffmpeg/classes.js';
-        import { toBlobURL } from './static/ffmpeg/index.js';
+        import { FFmpeg } from './static/ffmpeg/ffmpeg/index.js';
+        import { toBlobURL } from './static/ffmpeg/util/index.js';
 
         // 初始化FFmpeg
         const ffmpeg = new FFmpeg();
@@ -298,12 +298,10 @@
                 const baseURL = './static/ffmpeg';
                 const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
                 const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-                const workerURL = await toBlobURL(`${baseURL}/worker.js`, 'text/javascript');
                 
                 await ffmpeg.load({
                     coreURL: coreURL,
                     wasmURL: wasmURL,
-                    workerURL: workerURL
                 });
                 ffmpegLoaded = true;
             })();
@@ -322,17 +320,6 @@
             const minute = String(now.getMinutes()).padStart(2, '0');
             const second = String(now.getSeconds()).padStart(2, '0');
             return `${year}${month}${day}_${hour}${minute}${second}.${ext}`;
-        }
-
-        // 通用下载函数
-        function downloadFile(data, filename) {
-            const blob = new Blob([data.buffer], { type: `audio/${filename.split('.').pop()}` });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
         }
 
         // ---------------------- 截取音频功能 ----------------------
