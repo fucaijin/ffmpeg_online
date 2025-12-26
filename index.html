@@ -232,9 +232,7 @@
         import { toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js';
 
         // 初始化FFmpeg
-        const ffmpeg = new FFmpeg({
-            workerURL: './static/ffmpeg/worker.js'
-        });
+        const ffmpeg = new FFmpeg();
         let ffmpegLoaded = false;
         let loadFFmpegPromise = null;
         // 存储当前功能的上下文数据
@@ -296,27 +294,24 @@
             
             // 创建新的加载Promise
             loadFFmpegPromise = (async () => {
-                let baseURL;
-                let coreURL;
-                let wasmURL;
+                // 加载所有FFmpeg相关文件并转换为blob URL
+                const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+                const ffmpegBaseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/umd';
                 
-                try {
-                    // 先尝试从CDN加载核心文件
-                    baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
-                    coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
-                    wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-                } catch (error) {
-                    console.warn('CDN核心文件加载失败，尝试从本地static目录加载...');
-                    // 从本地static目录加载核心文件，这样在Vercel部署时也能访问
-                    baseURL = './static/ffmpeg';
-                    coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
-                    wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-                }
+                // 转换所有必要的文件为blob URL
+                const [coreURL, wasmURL, workerURL] = await Promise.all([
+                    toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+                    toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                    toBlobURL(`${ffmpegBaseURL}/worker.js`, 'text/javascript')
+                ]);
                 
+                // 使用blob URL加载FFmpeg，避免CORS问题
                 await ffmpeg.load({
-                    coreURL: coreURL,
-                    wasmURL: wasmURL,
+                    coreURL,
+                    wasmURL,
+                    workerURL
                 });
+                
                 ffmpegLoaded = true;
             })();
             
