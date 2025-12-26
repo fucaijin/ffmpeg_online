@@ -9,13 +9,25 @@ const load = async ({ coreURL: _coreURL, wasmURL: _wasmURL, workerURL: _workerUR
     try {
         if (!_coreURL)
             _coreURL = CORE_URL;
-        // when web worker type is `classic`.
-        importScripts(_coreURL);
+        
+        // Check if we're in a module worker
+        if (typeof importScripts === 'undefined' || _coreURL.includes('ffmpeg-core.js')) {
+            // when web worker type is `module` or loading local ffmpeg-core.js
+            // Directly import the ESM module
+            self.createFFmpegCore = (await import(
+            /* @vite-ignore */ _coreURL)).default;
+            if (!self.createFFmpegCore) {
+                throw ERROR_IMPORT_FAILURE;
+            }
+        } else {
+            // when web worker type is `classic`.
+            importScripts(_coreURL);
+        }
     }
-    catch {
+    catch (error) {
         if (!_coreURL || _coreURL === CORE_URL)
             _coreURL = CORE_URL.replace('/umd/', '/esm/');
-        // when web worker type is `module`.
+        // Fallback to ESM import
         self.createFFmpegCore = (await import(
         /* @vite-ignore */ _coreURL)).default;
         if (!self.createFFmpegCore) {
