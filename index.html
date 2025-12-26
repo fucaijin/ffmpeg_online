@@ -227,9 +227,9 @@
     </div>
 
     <script type="module">
-        // 直接使用CDN加载依赖
-        import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js';
-        import { toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js';
+        // 直接使用本地加载依赖
+        import { FFmpeg } from './static/ffmpeg/classes.js';
+        import { toBlobURL } from './static/ffmpeg/index.js';
 
         // 初始化FFmpeg
         const ffmpeg = new FFmpeg();
@@ -294,24 +294,17 @@
             
             // 创建新的加载Promise
             loadFFmpegPromise = (async () => {
-                // 加载所有FFmpeg相关文件并转换为blob URL
-                const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
-                const ffmpegBaseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/umd';
+                // 直接从本地static目录加载核心文件
+                const baseURL = './static/ffmpeg';
+                const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
+                const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
+                const workerURL = await toBlobURL(`${baseURL}/worker.js`, 'text/javascript');
                 
-                // 转换所有必要的文件为blob URL
-                const [coreURL, wasmURL, workerURL] = await Promise.all([
-                    toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-                    toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-                    toBlobURL(`${ffmpegBaseURL}/worker.js`, 'text/javascript')
-                ]);
-                
-                // 使用blob URL加载FFmpeg，避免CORS问题
                 await ffmpeg.load({
-                    coreURL,
-                    wasmURL,
-                    workerURL
+                    coreURL: coreURL,
+                    wasmURL: wasmURL,
+                    workerURL: workerURL
                 });
-                
                 ffmpegLoaded = true;
             })();
             
