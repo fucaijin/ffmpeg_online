@@ -234,6 +234,7 @@
         // 初始化FFmpeg
         const ffmpeg = new FFmpeg();
         let ffmpegLoaded = false;
+        let loadFFmpegPromise = null;
         // 存储当前功能的上下文数据
         let currentContext = {
             type: '',
@@ -281,28 +282,44 @@
 
         // 加载FFmpeg核心
         async function loadFFmpeg() {
-            let baseURL;
-            let coreURL;
-            let wasmURL;
-            
-            try {
-                // 先尝试从CDN加载核心文件
-                baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
-                coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
-                wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-            } catch (error) {
-                console.warn('CDN核心文件加载失败，尝试从本地static目录加载...');
-                // 从本地static目录加载核心文件，这样在Vercel部署时也能访问
-                baseURL = './static/ffmpeg';
-                coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
-                wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
+            // 如果已经加载完成，直接返回
+            if (ffmpegLoaded) {
+                return;
             }
             
-            await ffmpeg.load({
-                coreURL: coreURL,
-                wasmURL: wasmURL,
-            });
-            ffmpegLoaded = true;
+            // 如果已经有加载Promise在运行，返回该Promise
+            if (loadFFmpegPromise) {
+                return await loadFFmpegPromise;
+            }
+            
+            // 创建新的加载Promise
+            loadFFmpegPromise = (async () => {
+                let baseURL;
+                let coreURL;
+                let wasmURL;
+                
+                try {
+                    // 先尝试从CDN加载核心文件
+                    baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+                    coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
+                    wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
+                } catch (error) {
+                    console.warn('CDN核心文件加载失败，尝试从本地static目录加载...');
+                    // 从本地static目录加载核心文件，这样在Vercel部署时也能访问
+                    baseURL = './static/ffmpeg';
+                    coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
+                    wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
+                }
+                
+                await ffmpeg.load({
+                    coreURL: coreURL,
+                    wasmURL: wasmURL,
+                });
+                ffmpegLoaded = true;
+            })();
+            
+            // 等待加载完成
+            await loadFFmpegPromise;
         }
 
         // 生成当前日期时间文件名
@@ -349,6 +366,11 @@
             const ext = file.name.split('.').pop();
             const outputFileName = getOutputFileName(ext);
             
+            // 确保FFmpeg已经加载完成
+            if (!ffmpegLoaded) {
+                await loadFFmpeg();
+            }
+            
             // 写入文件
             await ffmpeg.writeFile('input.audio', await file.arrayBuffer());
             
@@ -386,6 +408,11 @@
             const file = document.getElementById('convert-file').files[0];
             const format = document.getElementById('convert-format').value;
             const outputFileName = getOutputFileName(format);
+            
+            // 确保FFmpeg已经加载完成
+            if (!ffmpegLoaded) {
+                await loadFFmpeg();
+            }
             
             // 写入文件
             await ffmpeg.writeFile('input.audio', await file.arrayBuffer());
@@ -433,6 +460,11 @@
         async function generateMergeVolumeCommand() {
             const files = document.getElementById('merge-files').files;
             if (files.length === 0) return;
+
+            // 确保FFmpeg已经加载完成
+            if (!ffmpegLoaded) {
+                await loadFFmpeg();
+            }
 
             const inputFiles = [];
             const filterCommands = [];
@@ -503,6 +535,11 @@
             const format = document.getElementById('video-convert-format').value;
             const outputFileName = getOutputFileName(format);
             
+            // 确保FFmpeg已经加载完成
+            if (!ffmpegLoaded) {
+                await loadFFmpeg();
+            }
+            
             // 写入文件
             await ffmpeg.writeFile('input.video', await file.arrayBuffer());
             
@@ -538,6 +575,11 @@
             const format = document.getElementById('extract-audio-format').value;
             const outputFileName = getOutputFileName(format);
             
+            // 确保FFmpeg已经加载完成
+            if (!ffmpegLoaded) {
+                await loadFFmpeg();
+            }
+            
             // 写入文件
             await ffmpeg.writeFile('input.video', await file.arrayBuffer());
             
@@ -572,6 +614,11 @@
         async function generateMergeVideoCommand() {
             const files = document.getElementById('merge-video-files').files;
             if (files.length < 2) return;
+
+            // 确保FFmpeg已经加载完成
+            if (!ffmpegLoaded) {
+                await loadFFmpeg();
+            }
 
             const outputExt = 'mp4';
             const outputFileName = getOutputFileName(outputExt);
