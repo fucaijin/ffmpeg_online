@@ -348,7 +348,7 @@
             }
             
             // 写入文件
-            await ffmpeg.writeFile('input.audio', await file.arrayBuffer());
+            await ffmpeg.writeFile('input.audio', new Uint8Array(await file.arrayBuffer()));
             
             // 生成FFmpeg命令
             const command = [
@@ -391,7 +391,7 @@
             }
             
             // 写入文件
-            await ffmpeg.writeFile('input.audio', await file.arrayBuffer());
+            await ffmpeg.writeFile('input.audio', new Uint8Array(await file.arrayBuffer()));
             
             // 生成FFmpeg命令
             const command = [
@@ -453,7 +453,7 @@
                 const file = files[i];
                 const volume = document.getElementById(`volume-${i}`).value;
                 const inputName = `input${i}.audio`;
-                await ffmpeg.writeFile(inputName, await file.arrayBuffer());
+                await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
                 inputFiles.push(inputName);
                 
                 // 音量调整
@@ -517,7 +517,7 @@
             }
             
             // 写入文件
-            await ffmpeg.writeFile('input.video', await file.arrayBuffer());
+            await ffmpeg.writeFile('input.video', new Uint8Array(await file.arrayBuffer()));
             
             // 生成FFmpeg命令
             const command = [
@@ -557,7 +557,7 @@
             }
             
             // 写入文件
-            await ffmpeg.writeFile('input.video', await file.arrayBuffer());
+            await ffmpeg.writeFile('input.video', new Uint8Array(await file.arrayBuffer()));
             
             // 生成FFmpeg命令
             const command = [
@@ -604,7 +604,7 @@
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 const inputName = `input${i}.video`;
-                await ffmpeg.writeFile(inputName, await file.arrayBuffer());
+                await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
                 inputFiles.push(inputName);
             }
             
