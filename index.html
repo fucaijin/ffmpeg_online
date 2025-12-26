@@ -227,22 +227,9 @@
     </div>
 
     <script type="module">
-        // 尝试从CDN加载，如果失败则从本地加载
-        let FFmpeg, toBlobURL;
-        try {
-            // 先尝试从CDN加载
-            const ffmpegModule = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.esm.js');
-            const utilModule = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/util.esm.js');
-            FFmpeg = ffmpegModule.FFmpeg;
-            toBlobURL = utilModule.toBlobURL;
-        } catch (error) {
-            console.warn('CDN加载失败，尝试从本地加载依赖...');
-            // 从本地node_modules加载，使用正确的文件路径
-            const ffmpegModule = await import('./node_modules/@ffmpeg/ffmpeg/dist/esm/index.js');
-            const utilModule = await import('./node_modules/@ffmpeg/util/dist/esm/index.js');
-            FFmpeg = ffmpegModule.FFmpeg;
-            toBlobURL = utilModule.toBlobURL;
-        }
+        // 直接使用CDN加载依赖
+        import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js';
+        import { toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js';
 
         // 初始化FFmpeg
         const ffmpeg = new FFmpeg();
@@ -300,13 +287,13 @@
             
             try {
                 // 先尝试从CDN加载核心文件
-                baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+                baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
                 coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
                 wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
             } catch (error) {
-                console.warn('CDN核心文件加载失败，尝试从本地加载...');
-                // 从本地加载核心文件
-                baseURL = './node_modules/@ffmpeg/core/dist/umd';
+                console.warn('CDN核心文件加载失败，尝试从本地static目录加载...');
+                // 从本地static目录加载核心文件，这样在Vercel部署时也能访问
+                baseURL = './static/ffmpeg';
                 coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
                 wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
             }
