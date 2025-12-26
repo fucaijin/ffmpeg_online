@@ -9,27 +9,23 @@ const load = async ({ coreURL: _coreURL, wasmURL: _wasmURL, workerURL: _workerUR
     try {
         if (!_coreURL)
             _coreURL = CORE_URL;
-        // Try classic importScripts first (works for UMD format)
-        importScripts(_coreURL);
-    }
-    catch (e1) {
-        try {
-            // If that fails, try module import (for ESM format)
-            if (!_coreURL || _coreURL === CORE_URL)
-                _coreURL = CORE_URL.replace('/umd/', '/esm/');
-            const module = await import(
-            /* @vite-ignore */ _coreURL);
-            // Check if it has a default export (ESM) or is directly available (UMD from blob)
-            self.createFFmpegCore = module.default || module.createFFmpegCore || self.createFFmpegCore;
-            if (!self.createFFmpegCore) {
-                throw ERROR_IMPORT_FAILURE;
-            }
-        } catch (e2) {
-            // Fallback: if createFFmpegCore is already on self (from UMD blob importScripts)
-            if (!self.createFFmpegCore) {
-                throw ERROR_IMPORT_FAILURE;
-            }
+        
+        // For module type worker, we need to load UMD module differently
+        // Create a script tag in a virtual document or use fetch + eval
+        const response = await fetch(_coreURL);
+        const scriptText = await response.text();
+        
+        // Evaluate the UMD script in the worker context
+        // This will expose createFFmpegCore on self
+        eval(scriptText);
+        
+        if (!self.createFFmpegCore) {
+            throw ERROR_IMPORT_FAILURE;
         }
+    }
+    catch (e) {
+        console.error('Failed to load ffmpeg-core:', e);
+        throw ERROR_IMPORT_FAILURE;
     }
     const coreURL = _coreURL;
     const wasmURL = _wasmURL ? _wasmURL : _coreURL.replace(/.js$/g, ".wasm");
