@@ -232,7 +232,9 @@
         import { toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js';
 
         // 初始化FFmpeg
-        const ffmpeg = new FFmpeg();
+        const ffmpeg = new FFmpeg({
+            workerURL: './static/ffmpeg/worker.js'
+        });
         let ffmpegLoaded = false;
         let loadFFmpegPromise = null;
         // 存储当前功能的上下文数据
