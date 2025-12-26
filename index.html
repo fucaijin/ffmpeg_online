@@ -237,9 +237,9 @@
             toBlobURL = utilModule.toBlobURL;
         } catch (error) {
             console.warn('CDN加载失败，尝试从本地加载依赖...');
-            // 从本地node_modules加载
-            const ffmpegModule = await import('./node_modules/@ffmpeg/ffmpeg/dist/ffmpeg.esm.js');
-            const utilModule = await import('./node_modules/@ffmpeg/util/dist/util.esm.js');
+            // 从本地node_modules加载，使用正确的文件路径
+            const ffmpegModule = await import('./node_modules/@ffmpeg/ffmpeg/dist/esm/index.js');
+            const utilModule = await import('./node_modules/@ffmpeg/util/dist/esm/index.js');
             FFmpeg = ffmpegModule.FFmpeg;
             toBlobURL = utilModule.toBlobURL;
         }
