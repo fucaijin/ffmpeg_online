@@ -456,22 +456,30 @@
                 await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
                 inputFiles.push(inputName);
                 
-                // 音量调整
+                // 音量调整 - 只有调整音量时才添加到filterCommands
                 if (volume) {
                     filterCommands.push(`[${i}:a]volume=${volume}[a${i}]`);
-                } else {
-                    filterCommands.push(`[${i}:a]`);
                 }
             }
 
             // 处理拼接逻辑
             if (files.length > 1) {
                 // 多个文件：调整音量后拼接
-                const filteredStreams = filterCommands.map((cmd, i) => cmd.includes('volume') ? `[a${i}]` : `[${i}:a]`).join('');
-                filterComplex = `-filter_complex "${filterCommands.join(';')};${filteredStreams}concat=n=${files.length}:v=0:a=1[outa]" -map "[outa]"`;
+                const filteredStreams = [];
+                for (let i = 0; i < files.length; i++) {
+                    filteredStreams.push(filterCommands.some(cmd => cmd.includes(`[${i}:a]volume`)) ? `[a${i}]` : `[${i}:a]`);
+                }
+                
+                let filterComplexParts = [];
+                if (filterCommands.length > 0) {
+                    filterComplexParts.push(filterCommands.join(';'));
+                }
+                filterComplexParts.push(`${filteredStreams.join('')}concat=n=${files.length}:v=0:a=1[outa]`);
+                
+                filterComplex = `-filter_complex "${filterComplexParts.join(';')}" -map "[outa]"`;
             } else {
                 // 单个文件：仅调整音量
-                if (filterCommands.length > 0 && filterCommands[0].includes('volume')) {
+                if (filterCommands.length > 0) {
                     filterComplex = `-filter:a "volume=${document.getElementById('volume-0').value}"`;
                 }
             }
@@ -666,7 +674,8 @@
                 a.click();
                 URL.revokeObjectURL(url);
             } catch (e) {
-                alert(`执行失败：${e.message}`);
+                const errorMessage = e.message || JSON.stringify(e);
+                alert(`执行失败：${errorMessage}`);
             } finally {
                 progressBar.style.width = '0%';
             }
