@@ -99,6 +99,9 @@
             <option value="cut">截取音频</option>
             <option value="convert">转换格式</option>
             <option value="merge-volume">拼接音频与调整音量</option>
+            <option value="video-convert">视频转码</option>
+            <option value="extract-audio">音频提取</option>
+            <option value="merge-video">视频合并</option>
         </select>
     </div>
 
@@ -167,9 +170,79 @@
         <button id="generate-merge-volume-command">生成FFmpeg命令</button>
     </div>
 
+    <!-- 视频转码模块 -->
+    <div id="video-convert-module" class="module hidden">
+        <h2>视频转码</h2>
+        <div class="form-group">
+            <label for="video-convert-file">选择视频文件</label>
+            <input type="file" id="video-convert-file" accept="video/*">
+        </div>
+        <div class="form-group">
+            <label for="video-convert-format">目标格式</label>
+            <select id="video-convert-format">
+                <option value="mp4">MP4</option>
+                <option value="avi">AVI</option>
+                <option value="mov">MOV</option>
+                <option value="webm">WEBM</option>
+            </select>
+        </div>
+        <div class="progress">
+            <div id="video-convert-progress" class="progress-bar"></div>
+        </div>
+        <button id="generate-video-convert-command">生成FFmpeg命令</button>
+    </div>
+
+    <!-- 音频提取模块 -->
+    <div id="extract-audio-module" class="module hidden">
+        <h2>音频提取</h2>
+        <div class="form-group">
+            <label for="extract-audio-file">选择视频文件</label>
+            <input type="file" id="extract-audio-file" accept="video/*">
+        </div>
+        <div class="form-group">
+            <label for="extract-audio-format">目标音频格式</label>
+            <select id="extract-audio-format">
+                <option value="mp3">MP3</option>
+                <option value="wav">WAV</option>
+                <option value="aac">AAC</option>
+            </select>
+        </div>
+        <div class="progress">
+            <div id="extract-audio-progress" class="progress-bar"></div>
+        </div>
+        <button id="generate-extract-audio-command">生成FFmpeg命令</button>
+    </div>
+
+    <!-- 视频合并模块 -->
+    <div id="merge-video-module" class="module hidden">
+        <h2>视频合并</h2>
+        <div class="form-group">
+            <label for="merge-video-files">选择多个视频文件</label>
+            <input type="file" id="merge-video-files" accept="video/*" multiple>
+        </div>
+        <div class="progress">
+            <div id="merge-video-progress" class="progress-bar"></div>
+        </div>
+        <button id="generate-merge-video-command">生成FFmpeg命令</button>
+    </div>
+
     <script type="module">
-        import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.esm.js';
-        import { toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/util.esm.js';
+        // 尝试从CDN加载，如果失败则从本地加载
+        let FFmpeg, toBlobURL;
+        try {
+            // 先尝试从CDN加载
+            const ffmpegModule = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.esm.js');
+            const utilModule = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/util.esm.js');
+            FFmpeg = ffmpegModule.FFmpeg;
+            toBlobURL = utilModule.toBlobURL;
+        } catch (error) {
+            console.warn('CDN加载失败，尝试从本地加载依赖...');
+            // 从本地node_modules加载
+            const ffmpegModule = await import('./node_modules/@ffmpeg/ffmpeg/dist/ffmpeg.esm.js');
+            const utilModule = await import('./node_modules/@ffmpeg/util/dist/util.esm.js');
+            FFmpeg = ffmpegModule.FFmpeg;
+            toBlobURL = utilModule.toBlobURL;
+        }
 
         // 初始化FFmpeg
         const ffmpeg = new FFmpeg();
@@ -189,6 +262,9 @@
         const cutModule = document.getElementById('cut-module');
         const convertModule = document.getElementById('convert-module');
         const mergeVolumeModule = document.getElementById('merge-volume-module');
+        const videoConvertModule = document.getElementById('video-convert-module');
+        const extractAudioModule = document.getElementById('extract-audio-module');
+        const mergeVideoModule = document.getElementById('merge-video-module');
         const audioItemsContainer = document.getElementById('audio-items-container');
 
         // 功能切换
@@ -197,6 +273,9 @@
             cutModule.classList.add('hidden');
             convertModule.classList.add('hidden');
             mergeVolumeModule.classList.add('hidden');
+            videoConvertModule.classList.add('hidden');
+            extractAudioModule.classList.add('hidden');
+            mergeVideoModule.classList.add('hidden');
             commandGroup.classList.add('hidden');
             audioItemsContainer.innerHTML = '';
             ffmpegCommandInput.value = '';
@@ -205,6 +284,9 @@
             if (value === 'cut') cutModule.classList.remove('hidden');
             else if (value === 'convert') convertModule.classList.remove('hidden');
             else if (value === 'merge-volume') mergeVolumeModule.classList.remove('hidden');
+            else if (value === 'video-convert') videoConvertModule.classList.remove('hidden');
+            else if (value === 'extract-audio') extractAudioModule.classList.remove('hidden');
+            else if (value === 'merge-video') mergeVideoModule.classList.remove('hidden');
             
             // 预加载FFmpeg
             if (!ffmpegLoaded) loadFFmpeg();
@@ -212,10 +294,26 @@
 
         // 加载FFmpeg核心
         async function loadFFmpeg() {
-            const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+            let baseURL;
+            let coreURL;
+            let wasmURL;
+            
+            try {
+                // 先尝试从CDN加载核心文件
+                baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+                coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
+                wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
+            } catch (error) {
+                console.warn('CDN核心文件加载失败，尝试从本地加载...');
+                // 从本地加载核心文件
+                baseURL = './node_modules/@ffmpeg/core/dist/umd';
+                coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
+                wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
+            }
+            
             await ffmpeg.load({
-                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                coreURL: coreURL,
+                wasmURL: wasmURL,
             });
             ffmpegLoaded = true;
         }
@@ -403,6 +501,126 @@
             };
         }
 
+        // ---------------------- 视频转码功能 ----------------------
+        document.getElementById('video-convert-file').addEventListener('change', validateVideoConvertForm);
+        document.getElementById('generate-video-convert-command').addEventListener('click', generateVideoConvertCommand);
+
+        function validateVideoConvertForm() {
+            const file = document.getElementById('video-convert-file').files[0];
+            const button = document.getElementById('generate-video-convert-command');
+            button.disabled = !file;
+        }
+
+        async function generateVideoConvertCommand() {
+            const file = document.getElementById('video-convert-file').files[0];
+            const format = document.getElementById('video-convert-format').value;
+            const outputFileName = getOutputFileName(format);
+            
+            // 写入文件
+            await ffmpeg.writeFile('input.video', await file.arrayBuffer());
+            
+            // 生成FFmpeg命令
+            const command = [
+                '-i', 'input.video',
+                outputFileName
+            ];
+            
+            // 显示命令并存储上下文
+            ffmpegCommandInput.value = command.join(' ');
+            ffmpegCommandInput.readOnly = false;
+            commandGroup.classList.remove('hidden');
+            currentContext = {
+                type: 'video-convert',
+                data: { progressBar: document.getElementById('video-convert-progress') },
+                outputExt: format
+            };
+        }
+
+        // ---------------------- 音频提取功能 ----------------------
+        document.getElementById('extract-audio-file').addEventListener('change', validateExtractAudioForm);
+        document.getElementById('generate-extract-audio-command').addEventListener('click', generateExtractAudioCommand);
+
+        function validateExtractAudioForm() {
+            const file = document.getElementById('extract-audio-file').files[0];
+            const button = document.getElementById('generate-extract-audio-command');
+            button.disabled = !file;
+        }
+
+        async function generateExtractAudioCommand() {
+            const file = document.getElementById('extract-audio-file').files[0];
+            const format = document.getElementById('extract-audio-format').value;
+            const outputFileName = getOutputFileName(format);
+            
+            // 写入文件
+            await ffmpeg.writeFile('input.video', await file.arrayBuffer());
+            
+            // 生成FFmpeg命令
+            const command = [
+                '-i', 'input.video',
+                '-vn', // 不包含视频
+                outputFileName
+            ];
+            
+            // 显示命令并存储上下文
+            ffmpegCommandInput.value = command.join(' ');
+            ffmpegCommandInput.readOnly = false;
+            commandGroup.classList.remove('hidden');
+            currentContext = {
+                type: 'extract-audio',
+                data: { progressBar: document.getElementById('extract-audio-progress') },
+                outputExt: format
+            };
+        }
+
+        // ---------------------- 视频合并功能 ----------------------
+        document.getElementById('merge-video-files').addEventListener('change', validateMergeVideoForm);
+        document.getElementById('generate-merge-video-command').addEventListener('click', generateMergeVideoCommand);
+
+        function validateMergeVideoForm() {
+            const files = document.getElementById('merge-video-files').files;
+            const button = document.getElementById('generate-merge-video-command');
+            button.disabled = files.length < 2;
+        }
+
+        async function generateMergeVideoCommand() {
+            const files = document.getElementById('merge-video-files').files;
+            if (files.length < 2) return;
+
+            const outputExt = 'mp4';
+            const outputFileName = getOutputFileName(outputExt);
+            
+            // 写入所有文件
+            const inputFiles = [];
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const inputName = `input${i}.video`;
+                await ffmpeg.writeFile(inputName, await file.arrayBuffer());
+                inputFiles.push(inputName);
+            }
+            
+            // 生成文件列表
+            await ffmpeg.writeFile('filelist.txt', inputFiles.map(f => `file '${f}'`).join('\n'));
+            
+            // 生成FFmpeg命令
+            const command = [
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', 'filelist.txt',
+                '-c', 'copy',
+                outputFileName
+            ];
+            
+            // 显示命令并存储上下文
+            ffmpegCommandInput.value = command.join(' ');
+            ffmpegCommandInput.readOnly = false;
+            commandGroup.classList.remove('hidden');
+            currentContext = {
+                type: 'merge-video',
+                data: { progressBar: document.getElementById('merge-video-progress') },
+                outputExt: outputExt
+            };
+        }
+
         // ---------------------- 确认命令并执行 ----------------------
         confirmCommandBtn.addEventListener('click', async () => {
             if (!ffmpegLoaded) {
@@ -425,7 +643,18 @@
             try {
                 await ffmpeg.exec(command);
                 const data = await ffmpeg.readFile(outputFileName);
-                downloadFile(data, outputFileName);
+                
+                // 根据输出文件类型设置正确的MIME类型
+                const ext = outputFileName.split('.').pop();
+                const mimeType = ext.startsWith('mp4') || ext === 'mov' || ext === 'avi' || ext === 'webm' ? `video/${ext}` : `audio/${ext}`;
+                
+                const blob = new Blob([data.buffer], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = outputFileName;
+                a.click();
+                URL.revokeObjectURL(url);
             } catch (e) {
                 alert(`执行失败：${e.message}`);
             } finally {
