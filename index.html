@@ -452,14 +452,12 @@
             const outputExt = files.length > 1 ? 'mp3' : files[0].name.split('.').pop();
             const outputFileName = getOutputFileName(outputExt);
 
-            // 写入所有文件并生成音量调整命令
+            // 生成文件列表但不写入文件，文件将在执行命令时写入
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 const volume = document.getElementById(`volume-${i}`).value;
-                // 使用原始文件的扩展名，而不是固定的.audio
-                const originalExt = file.name.split('.').pop();
-                const inputName = `input${i}.${originalExt}`;
-                await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
+                // 使用固定的.wav扩展名，确保FFmpeg能够正确识别
+                const inputName = `input${i}.wav`;
                 inputFiles.push(inputName);
                 
                 // 音量调整 - 只有调整音量时才添加到filterCommands
@@ -508,6 +506,7 @@
                 type: 'merge-volume',
                 data: { 
                     progressBar: document.getElementById('merge-volume-progress'),
+                    files: files, // 存储files对象，以便在执行命令时使用
                     filesLength: files.length
                 },
                 outputExt: outputExt
@@ -672,6 +671,22 @@
 
             // 执行命令
             try {
+                // 如果是音频合并任务，需要重新写入文件
+                if (currentContext.type === 'merge-volume' && currentContext.data.files) {
+                    const files = currentContext.data.files;
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        const inputName = `input${i}.wav`;
+                        // 先删除可能存在的旧文件，避免冲突
+                        try {
+                            await ffmpeg.unlink(inputName);
+                        } catch (e) {
+                            // 文件不存在，忽略错误
+                        }
+                        await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
+                    }
+                }
+                
                 await ffmpeg.exec(command);
                 const data = await ffmpeg.readFile(outputFileName);
                 
