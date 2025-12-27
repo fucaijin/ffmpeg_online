@@ -143,21 +143,22 @@
             outline: none;
             -webkit-appearance: none;
             appearance: none;
+            pointer-events: none;
         }
         
-        /* 滑块轨道样式 */
+        /* 滑块轨道样式 - 禁止点击 */
         .trim-slider::-webkit-slider-runnable-track {
             width: 100%;
             height: 100%;
             background: transparent;
-            cursor: pointer;
+            cursor: default;
         }
         
         .trim-slider::-moz-range-track {
             width: 100%;
             height: 100%;
             background: transparent;
-            cursor: pointer;
+            cursor: default;
         }
         
         /* 滑块 thumb 样式 - 三角顶针型 */
@@ -172,6 +173,7 @@
             cursor: pointer;
             z-index: 3;
             transform: translateY(5px);
+            pointer-events: auto;
         }
         
         .trim-slider::-moz-range-thumb {
@@ -184,6 +186,7 @@
             /* Firefox 使用背景图片模拟三角形 */
             background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='20' viewBox='0 0 10 20'><polygon points='0,0 10,0 5,20' fill='%23007bff'/></svg>");
             background-size: 100% 100%;
+            pointer-events: auto;
         }
         
         /* 开始滑块样式 - 显示为向下三角形 */
