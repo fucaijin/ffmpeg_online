@@ -515,9 +515,36 @@
 
         // 存储当前选择的文件列表
         let selectedFiles = [];
+        // 存储音频对象和时长
+        let audioObjects = [];
+
+        // 时间格式化函数：将秒数转换为HH:mm:ss.fff格式
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds < 0) seconds = 0;
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            const millis = Math.floor((seconds * 1000) % 1000);
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${millis.toString().padStart(3, '0')}`;
+        }
+
+        // 将格式化时间转换为秒数
+        function parseTime(timeStr) {
+            if (!timeStr) return 0;
+            const parts = timeStr.split(':');
+            if (parts.length === 3) {
+                const [hours, minutes, secsMillis] = parts;
+                const [secs, millis] = secsMillis.split('.');
+                return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(secs) + (parseInt(millis || 0) / 1000);
+            }
+            return parseFloat(timeStr) || 0;
+        };
 
         function handleMergeFilesSelect(e) {
             selectedFiles = Array.from(e.target.files);
+            audioObjects = [];
             renderFileItems();
         }
 
@@ -551,18 +578,20 @@
                             <label>截取设置</label>
                             <div class="trim-controls">
                                 <div class="trim-progress-container">
-                                    <input type="range" id="trim-start-${index}" class="trim-slider start-slider" min="0" max="100" value="0" step="1">
-                                    <input type="range" id="trim-end-${index}" class="trim-slider end-slider" min="0" max="100" value="100" step="1">
+                                    <input type="range" id="trim-start-${index}" class="trim-slider start-slider" min="0" max="100" value="0" step="0.1">
+                                    <input type="range" id="trim-end-${index}" class="trim-slider end-slider" min="0" max="100" value="100" step="0.1">
                                     <div class="trim-progress-bar"></div>
                                 </div>
                                 <div class="trim-time-inputs">
                                     <label>开始时间：</label>
-                                    <input type="number" id="start-time-${index}" step="0.1" min="0" placeholder="0">
+                                    <input type="text" id="start-time-${index}" placeholder="00:00:00.000">
                                     <label>结束时间：</label>
-                                    <input type="number" id="end-time-${index}" step="0.1" min="0" placeholder="全长">
+                                    <input type="text" id="end-time-${index}" placeholder="00:00:00.000">
+                                    <label>总时长：</label>
+                                    <span id="total-duration-${index}">00:00:00.000</span>
                                 </div>
                                 <button class="play-btn" onclick="playFile(${index})">播放</button>
-                                <button class="pause-btn" onclick="pauseFile(${index})")>暂停</button>
+                                <button class="pause-btn" onclick="pauseFile(${index})">暂停</button>
                             </div>
                         </div>
                     </div>
@@ -574,12 +603,161 @@
                 itemDiv.addEventListener('drop', handleDrop);
                 
                 audioItemsContainer.appendChild(itemDiv);
+                
+                // 加载音频并获取时长
+                loadAudioDuration(file, index);
             });
+        }
+
+        // 加载音频并获取时长
+        function loadAudioDuration(file, index) {
+            const audio = new Audio();
+            const url = URL.createObjectURL(file);
+            audio.src = url;
+            
+            audio.onloadedmetadata = () => {
+                const duration = audio.duration;
+                audioObjects[index] = { audio, duration, url };
+                
+                // 更新总时长显示
+                const totalDurationEl = document.getElementById(`total-duration-${index}`);
+                if (totalDurationEl) {
+                    totalDurationEl.textContent = formatTime(duration);
+                }
+                
+                // 设置结束时间输入框的默认值为总时长
+                const endTimeEl = document.getElementById(`end-time-${index}`);
+                if (endTimeEl) {
+                    endTimeEl.value = formatTime(duration);
+                }
+                
+                // 更新滑块的最大值为实际时长
+                const startSlider = document.getElementById(`trim-start-${index}`);
+                const endSlider = document.getElementById(`trim-end-${index}`);
+                if (startSlider && endSlider) {
+                    startSlider.max = duration;
+                    endSlider.max = duration;
+                    endSlider.value = duration;
+                }
+                
+                // 添加滑块事件监听
+                addSliderEventListeners(index);
+                // 添加输入框事件监听
+                addInputEventListeners(index);
+                
+                // 更新进度条显示
+                updateTrimProgressBar(index);
+            };
+        }
+
+        // 添加滑块事件监听
+        function addSliderEventListeners(index) {
+            const startSlider = document.getElementById(`trim-start-${index}`);
+            const endSlider = document.getElementById(`trim-end-${index}`);
+            
+            if (startSlider) {
+                startSlider.addEventListener('input', () => {
+                    const value = parseFloat(startSlider.value);
+                    const endSlider = document.getElementById(`trim-end-${index}`);
+                    if (value > parseFloat(endSlider.value)) {
+                        startSlider.value = endSlider.value;
+                        return;
+                    }
+                    document.getElementById(`start-time-${index}`).value = formatTime(value);
+                    updateTrimProgressBar(index);
+                });
+            }
+            
+            if (endSlider) {
+                endSlider.addEventListener('input', () => {
+                    const value = parseFloat(endSlider.value);
+                    const startSlider = document.getElementById(`trim-start-${index}`);
+                    if (value < parseFloat(startSlider.value)) {
+                        endSlider.value = startSlider.value;
+                        return;
+                    }
+                    document.getElementById(`end-time-${index}`).value = formatTime(value);
+                    updateTrimProgressBar(index);
+                });
+            }
+        }
+
+        // 添加输入框事件监听
+        function addInputEventListeners(index) {
+            const startTimeInput = document.getElementById(`start-time-${index}`);
+            const endTimeInput = document.getElementById(`end-time-${index}`);
+            
+            if (startTimeInput) {
+                startTimeInput.addEventListener('input', () => {
+                    const value = parseTime(startTimeInput.value);
+                    const endSlider = document.getElementById(`trim-end-${index}`);
+                    const max = parseFloat(endSlider.max);
+                    const endValue = parseFloat(endSlider.value);
+                    
+                    if (value > endValue) {
+                        startTimeInput.value = formatTime(endValue);
+                        return;
+                    }
+                    if (value > max) {
+                        startTimeInput.value = formatTime(max);
+                        return;
+                    }
+                    
+                    document.getElementById(`trim-start-${index}`).value = value;
+                    updateTrimProgressBar(index);
+                });
+            }
+            
+            if (endTimeInput) {
+                endTimeInput.addEventListener('input', () => {
+                    const value = parseTime(endTimeInput.value);
+                    const startSlider = document.getElementById(`trim-start-${index}`);
+                    const max = parseFloat(startSlider.max);
+                    const startValue = parseFloat(startSlider.value);
+                    
+                    if (value < startValue) {
+                        endTimeInput.value = formatTime(startValue);
+                        return;
+                    }
+                    if (value > max) {
+                        endTimeInput.value = formatTime(max);
+                        return;
+                    }
+                    
+                    document.getElementById(`trim-end-${index}`).value = value;
+                    updateTrimProgressBar(index);
+                });
+            }
+        }
+
+        // 更新截取进度条
+        function updateTrimProgressBar(index) {
+            const startSlider = document.getElementById(`trim-start-${index}`);
+            const endSlider = document.getElementById(`trim-end-${index}`);
+            const progressBar = startSlider?.parentElement?.querySelector('.trim-progress-bar');
+            
+            if (startSlider && endSlider && progressBar) {
+                const start = parseFloat(startSlider.value);
+                const end = parseFloat(endSlider.value);
+                const max = parseFloat(startSlider.max);
+                
+                const startPercent = (start / max) * 100;
+                const widthPercent = ((end - start) / max) * 100;
+                
+                progressBar.style.left = `${startPercent}%`;
+                progressBar.style.width = `${widthPercent}%`;
+            }
         }
 
         // 删除文件
         window.removeFile = function(index) {
             selectedFiles.splice(index, 1);
+            // 释放音频资源
+            if (audioObjects[index]) {
+                URL.revokeObjectURL(audioObjects[index].url);
+                audioObjects[index].audio.pause();
+            }
+            audioObjects.splice(index, 1);
             renderFileItems();
         };
 
@@ -609,6 +787,10 @@
                 const [movedFile] = selectedFiles.splice(draggedIndex, 1);
                 selectedFiles.splice(targetIndex, 0, movedFile);
                 
+                // 重新排列音频对象
+                const [movedAudio] = audioObjects.splice(draggedIndex, 1);
+                audioObjects.splice(targetIndex, 0, movedAudio);
+                
                 // 重新渲染
                 renderFileItems();
             }
@@ -616,16 +798,38 @@
             return false;
         }
 
-        // 播放和暂停功能（占位，实际播放需要更复杂的实现）
+        // 播放功能
         window.playFile = function(index) {
-            const file = selectedFiles[index];
-            console.log('播放文件:', file.name);
-            // 实际播放逻辑需要使用HTML5 Audio/Video API
+            if (audioObjects[index]) {
+                const audio = audioObjects[index].audio;
+                // 设置播放范围
+                const startTime = parseTime(document.getElementById(`start-time-${index}`).value);
+                const endTime = parseTime(document.getElementById(`end-time-${index}`).value);
+                
+                audio.currentTime = startTime;
+                audio.play();
+                
+                // 添加结束监听
+                audio.onended = () => {
+                    // 播放完成后重置到开始位置
+                    audio.currentTime = startTime;
+                };
+                
+                // 添加时间更新监听，确保不超过结束时间
+                audio.ontimeupdate = () => {
+                    if (audio.currentTime >= endTime) {
+                        audio.pause();
+                        audio.currentTime = startTime;
+                    }
+                };
+            }
         };
 
+        // 暂停功能
         window.pauseFile = function(index) {
-            const file = selectedFiles[index];
-            console.log('暂停文件:', file.name);
+            if (audioObjects[index]) {
+                audioObjects[index].audio.pause();
+            }
         };
 
         async function generateMergeVolumeCommand() {
