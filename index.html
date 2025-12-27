@@ -65,6 +65,142 @@
             padding: 1rem;
             border: 1px dashed #ccc;
             border-radius: 4px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .audio-item:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+        }
+        
+        .audio-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+        
+        .file-type-indicator {
+            margin-right: 0.5rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .file-name {
+            flex-grow: 1;
+            margin-right: 0.5rem;
+            word-break: break-all;
+        }
+        
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.6rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            width: auto;
+        }
+        
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+        
+        .item-controls {
+            padding-left: 1rem;
+        }
+        
+        .trim-controls {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+        }
+        
+        .trim-progress-container {
+            position: relative;
+            height: 40px;
+            margin-bottom: 1rem;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .trim-slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .trim-slider.start-slider {
+            z-index: 2;
+        }
+        
+        .trim-slider.end-slider {
+            z-index: 1;
+        }
+        
+        .trim-progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background-color: #007bff;
+            opacity: 0.5;
+            z-index: 0;
+        }
+        
+        .trim-time-inputs {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .trim-time-inputs label {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        
+        .trim-time-inputs input {
+            width: 80px;
+            margin: 0;
+        }
+        
+        .play-btn, .pause-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-right: 0.5rem;
+            width: auto;
+        }
+        
+        .pause-btn {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .play-btn:hover {
+            background-color: #218838;
+        }
+        
+        .pause-btn:hover {
+            background-color: #e0a800;
         }
         .progress {
             margin: 1rem 0;
@@ -88,6 +224,9 @@
             background-color: #f8f9fa;
             border-radius: 6px;
         }
+        h1 {
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -96,12 +235,8 @@
         <label for="function-select">选择功能</label>
         <select id="function-select">
             <option value="">--请选择功能--</option>
-            <option value="cut">截取音频</option>
-            <option value="convert">转换格式</option>
-            <option value="merge-volume">拼接音频与调整音量</option>
-            <option value="video-convert">视频转码</option>
-            <option value="extract-audio">音频提取</option>
-            <option value="merge-video">视频合并</option>
+            <option value="convert">[音频/视频]转换格式(音频提取、音频视频格式转换)</option>
+            <option value="merge-volume">[音频/视频]截取、拼接与调整音量</option>
         </select>
     </div>
 
@@ -109,121 +244,40 @@
     <div class="command-group hidden" id="command-group">
         <label for="ffmpeg-command">FFmpeg 命令（可手动修改）</label>
         <textarea id="ffmpeg-command" readonly placeholder="FFmpeg命令将在此处生成..."></textarea>
-        <button id="confirm-command">确认命令并执行</button>
-    </div>
-
-    <!-- 截取音频模块 -->
-    <div id="cut-module" class="module hidden">
-        <h2>截取音频</h2>
-        <div class="form-group">
-            <label for="cut-file">选择音频文件</label>
-            <input type="file" id="cut-file" accept="audio/*">
-        </div>
-        <div class="form-group">
-            <label for="cut-start">开始时间（秒，支持小数，如 10.5）</label>
-            <input type="number" id="cut-start" step="0.1" min="0" placeholder="如 0">
-        </div>
-        <div class="form-group">
-            <label for="cut-end">结束时间（秒，支持小数，如 20.5）</label>
-            <input type="number" id="cut-end" step="0.1" min="0" placeholder="如 10">
-        </div>
-        <div class="progress">
-            <div id="cut-progress" class="progress-bar"></div>
-        </div>
-        <button id="generate-cut-command">生成FFmpeg命令</button>
+        <button id="confirm-command" type="button">确认命令并执行</button>
     </div>
 
     <!-- 转换格式模块 -->
     <div id="convert-module" class="module hidden">
-        <h2>转换格式</h2>
+        <h2>[音频/视频]转换格式</h2>
         <div class="form-group">
-            <label for="convert-file">选择音频文件</label>
-            <input type="file" id="convert-file" accept="audio/*">
+            <label for="convert-file">选择文件</label>
+            <input type="file" id="convert-file" accept="audio/*,video/*">
         </div>
         <div class="form-group">
             <label for="convert-format">目标格式</label>
             <select id="convert-format">
-                <option value="mp3">MP3</option>
-                <option value="wav">WAV</option>
-                <option value="flac">FLAC</option>
-                <option value="ogg">OGG</option>
-                <option value="aac">AAC</option>
+                <!-- 选项将根据选择的文件类型动态生成 -->
             </select>
         </div>
         <div class="progress">
             <div id="convert-progress" class="progress-bar"></div>
         </div>
-        <button id="generate-convert-command">生成FFmpeg命令</button>
+        <button id="generate-convert-command" type="button">生成FFmpeg命令</button>
     </div>
 
-    <!-- 拼接音频与调整音量模块 -->
+    <!-- 截取、拼接与调整音量模块 -->
     <div id="merge-volume-module" class="module hidden">
-        <h2>拼接音频与调整音量</h2>
+        <h2>[音频/视频]截取、拼接与调整音量</h2>
         <div class="form-group">
-            <label for="merge-files">选择多个音频文件</label>
-            <input type="file" id="merge-files" accept="audio/*" multiple>
+            <label for="merge-files">选择文件</label>
+            <input type="file" id="merge-files" accept="audio/*,video/*" multiple>
         </div>
         <div id="audio-items-container"></div>
         <div class="progress">
             <div id="merge-volume-progress" class="progress-bar"></div>
         </div>
-        <button id="generate-merge-volume-command">生成FFmpeg命令</button>
-    </div>
-
-    <!-- 视频转码模块 -->
-    <div id="video-convert-module" class="module hidden">
-        <h2>视频转码</h2>
-        <div class="form-group">
-            <label for="video-convert-file">选择视频文件</label>
-            <input type="file" id="video-convert-file" accept="video/*">
-        </div>
-        <div class="form-group">
-            <label for="video-convert-format">目标格式</label>
-            <select id="video-convert-format">
-                <option value="mp4">MP4</option>
-                <option value="avi">AVI</option>
-                <option value="mov">MOV</option>
-                <option value="webm">WEBM</option>
-            </select>
-        </div>
-        <div class="progress">
-            <div id="video-convert-progress" class="progress-bar"></div>
-        </div>
-        <button id="generate-video-convert-command">生成FFmpeg命令</button>
-    </div>
-
-    <!-- 音频提取模块 -->
-    <div id="extract-audio-module" class="module hidden">
-        <h2>音频提取</h2>
-        <div class="form-group">
-            <label for="extract-audio-file">选择视频文件</label>
-            <input type="file" id="extract-audio-file" accept="video/*">
-        </div>
-        <div class="form-group">
-            <label for="extract-audio-format">目标音频格式</label>
-            <select id="extract-audio-format">
-                <option value="mp3">MP3</option>
-                <option value="wav">WAV</option>
-                <option value="aac">AAC</option>
-            </select>
-        </div>
-        <div class="progress">
-            <div id="extract-audio-progress" class="progress-bar"></div>
-        </div>
-        <button id="generate-extract-audio-command">生成FFmpeg命令</button>
-    </div>
-
-    <!-- 视频合并模块 -->
-    <div id="merge-video-module" class="module hidden">
-        <h2>视频合并</h2>
-        <div class="form-group">
-            <label for="merge-video-files">选择多个视频文件</label>
-            <input type="file" id="merge-video-files" accept="video/*" multiple>
-        </div>
-        <div class="progress">
-            <div id="merge-video-progress" class="progress-bar"></div>
-        </div>
-        <button id="generate-merge-video-command">生成FFmpeg命令</button>
+        <button id="generate-merge-volume-command" type="button">生成FFmpeg命令</button>
     </div>
 
     <script type="module">
@@ -257,34 +311,22 @@
         const commandGroup = document.getElementById('command-group');
         const ffmpegCommandInput = document.getElementById('ffmpeg-command');
         const confirmCommandBtn = document.getElementById('confirm-command');
-        const cutModule = document.getElementById('cut-module');
         const convertModule = document.getElementById('convert-module');
         const mergeVolumeModule = document.getElementById('merge-volume-module');
-        const videoConvertModule = document.getElementById('video-convert-module');
-        const extractAudioModule = document.getElementById('extract-audio-module');
-        const mergeVideoModule = document.getElementById('merge-video-module');
         const audioItemsContainer = document.getElementById('audio-items-container');
 
         // 功能切换
         functionSelect.addEventListener('change', (e) => {
             const value = e.target.value;
-            cutModule.classList.add('hidden');
             convertModule.classList.add('hidden');
             mergeVolumeModule.classList.add('hidden');
-            videoConvertModule.classList.add('hidden');
-            extractAudioModule.classList.add('hidden');
-            mergeVideoModule.classList.add('hidden');
             commandGroup.classList.add('hidden');
             audioItemsContainer.innerHTML = '';
             ffmpegCommandInput.value = '';
             currentContext = { type: '', data: null, outputExt: '' };
             
-            if (value === 'cut') cutModule.classList.remove('hidden');
-            else if (value === 'convert') convertModule.classList.remove('hidden');
+            if (value === 'convert') convertModule.classList.remove('hidden');
             else if (value === 'merge-volume') mergeVolumeModule.classList.remove('hidden');
-            else if (value === 'video-convert') videoConvertModule.classList.remove('hidden');
-            else if (value === 'extract-audio') extractAudioModule.classList.remove('hidden');
-            else if (value === 'merge-video') mergeVideoModule.classList.remove('hidden');
             
             // 预加载FFmpeg
             if (!ffmpegLoaded) loadFFmpeg();
@@ -331,61 +373,71 @@
             return `${year}${month}${day}_${hour}${minute}${second}.${ext}`;
         }
 
-        // ---------------------- 截取音频功能 ----------------------
-        document.getElementById('cut-file').addEventListener('change', validateCutForm);
-        document.getElementById('cut-start').addEventListener('input', validateCutForm);
-        document.getElementById('cut-end').addEventListener('input', validateCutForm);
-        document.getElementById('generate-cut-command').addEventListener('click', generateCutCommand);
-
-        function validateCutForm() {
-            const file = document.getElementById('cut-file').files[0];
-            const start = document.getElementById('cut-start').value;
-            const end = document.getElementById('cut-end').value;
-            const button = document.getElementById('generate-cut-command');
-            button.disabled = !file || !start || !end || parseFloat(start) >= parseFloat(end);
-        }
-
-        async function generateCutCommand() {
-            const file = document.getElementById('cut-file').files[0];
-            const start = document.getElementById('cut-start').value;
-            const end = document.getElementById('cut-end').value;
-            const ext = file.name.split('.').pop();
-            const outputFileName = getOutputFileName(ext);
-            
-            // 确保FFmpeg已经加载完成
-            if (!ffmpegLoaded) {
-                await loadFFmpeg();
-            }
-            
-            // 写入文件
-            const originalExt = file.name.split('.').pop();
-            const inputName = `input.${originalExt}`;
-            await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
-            
-            // 生成FFmpeg命令
-            const command = [
-                '-i', inputName,
-                '-ss', start,
-                '-to', end,
-                '-c', 'copy',
-                '-avoid_negative_ts', 'make_zero',
-                outputFileName
-            ];
-            
-            // 显示命令并存储上下文（添加ffmpeg前缀）
-            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
-            ffmpegCommandInput.readOnly = false;
-            commandGroup.classList.remove('hidden');
-            currentContext = {
-                type: 'cut',
-                data: { progressBar: document.getElementById('cut-progress') },
-                outputExt: ext
-            };
-        }
-
         // ---------------------- 转换格式功能 ----------------------
-        document.getElementById('convert-file').addEventListener('change', validateConvertForm);
+        document.getElementById('convert-file').addEventListener('change', handleConvertFileSelect);
         document.getElementById('generate-convert-command').addEventListener('click', generateConvertCommand);
+
+        // 支持的音频和视频格式
+        const audioFormats = ['mp3', 'wav', 'flac', 'ogg', 'aac'];
+        const videoFormats = ['mp4', 'avi', 'mov', 'webm'];
+
+        // 根据输出格式获取合适的音频编码器
+        function getAudioCodecForFormat(format) {
+            switch(format) {
+                case 'mp3':
+                    return 'libmp3lame';
+                case 'aac':
+                    return 'aac';
+                case 'flac':
+                    return 'flac';
+                case 'ogg':
+                    return 'libvorbis';
+                case 'wav':
+                    return 'pcm_s16le';
+                case 'mp4':
+                case 'mov':
+                case 'avi':
+                case 'webm':
+                    return 'aac'; // 视频格式默认使用aac音频编码
+                default:
+                    return 'copy';
+            }
+        }
+
+        function handleConvertFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const convertFormatSelect = document.getElementById('convert-format');
+            convertFormatSelect.innerHTML = '';
+
+            // 检测文件类型
+            const isVideo = file.type.startsWith('video/');
+            const isAudio = file.type.startsWith('audio/');
+
+            // 添加所有支持的格式选项
+            if (isVideo || isAudio) {
+                // 添加音频格式
+                audioFormats.forEach(format => {
+                    const option = document.createElement('option');
+                    option.value = format;
+                    option.textContent = format.toUpperCase();
+                    convertFormatSelect.appendChild(option);
+                });
+            }
+
+            if (isVideo || isAudio) {
+                // 添加视频格式
+                videoFormats.forEach(format => {
+                    const option = document.createElement('option');
+                    option.value = format;
+                    option.textContent = format.toUpperCase();
+                    convertFormatSelect.appendChild(option);
+                });
+            }
+
+            validateConvertForm();
+        }
 
         function validateConvertForm() {
             const file = document.getElementById('convert-file').files[0];
@@ -408,12 +460,43 @@
             const inputName = `input.${originalExt}`;
             await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
             
+            // 检测文件类型和输出格式类型
+            const isVideoInput = file.type.startsWith('video/');
+            const isAudioInput = file.type.startsWith('audio/');
+            const isAudioOutput = audioFormats.includes(format);
+            const isVideoOutput = videoFormats.includes(format);
+            
             // 生成FFmpeg命令
-            const command = [
-                '-i', inputName,
-                '-c', 'copy',
-                outputFileName
-            ];
+            const command = ['-i', inputName];
+            
+            if (isVideoInput && isAudioOutput) {
+                // 视频转音频 - 提取音频
+                command.push('-vn'); // 不包含视频
+                if (audioFormats.includes(format)) {
+                    // 如果输出是音频格式，使用适当的编码器
+                    command.push('-c:a', getAudioCodecForFormat(format));
+                } else {
+                    command.push('-acodec', 'copy');
+                }
+            } else if (isAudioInput && isVideoOutput) {
+                // 音频转视频 - 生成无画面视频
+                command.push('-f', 'lavfi', '-i', 'color=c=black:s=16x16:r=1');
+                command.push('-c:v', 'libx264');
+                command.push('-c:a', getAudioCodecForFormat(format));
+                command.push('-shortest');
+            } else if (isAudioInput && isAudioOutput) {
+                // 音频转音频 - 不同格式需要重新编码
+                command.push('-c:a', getAudioCodecForFormat(format));
+            } else if (isVideoInput && isVideoOutput) {
+                // 视频转视频
+                command.push('-c:v', 'libx264');
+                command.push('-c:a', getAudioCodecForFormat(format));
+            } else {
+                // 其他情况 - 尝试直接复制
+                command.push('-c', 'copy');
+            }
+            
+            command.push(outputFileName);
             
             // 显示命令并存储上下文（添加ffmpeg前缀）
             ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
@@ -426,32 +509,127 @@
             };
         }
 
-        // ---------------------- 拼接音频与调整音量功能 ----------------------
+        // ---------------------- 截取、拼接与调整音量功能 ----------------------
         document.getElementById('merge-files').addEventListener('change', handleMergeFilesSelect);
         document.getElementById('generate-merge-volume-command').addEventListener('click', generateMergeVolumeCommand);
 
+        // 存储当前选择的文件列表
+        let selectedFiles = [];
+
         function handleMergeFilesSelect(e) {
-            const files = e.target.files;
-            audioItemsContainer.innerHTML = '';
-            
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const audioItem = document.createElement('div');
-                audioItem.className = 'audio-item';
-                audioItem.innerHTML = `
-                    <label>音频 ${i + 1}：${file.name}</label>
-                    <div class="form-group">
-                        <label for="volume-${i}">音量调整（分贝，不输入则不调整，如 2 或 -3）</label>
-                        <input type="number" id="volume-${i}" step="0.1" placeholder="不调整请留空">
-                    </div>
-                `;
-                audioItemsContainer.appendChild(audioItem);
-            }
+            selectedFiles = Array.from(e.target.files);
+            renderFileItems();
         }
 
+        function renderFileItems() {
+            audioItemsContainer.innerHTML = '';
+            audioItemsContainer.className = 'audio-items-container';
+            audioItemsContainer.setAttribute('data-sortable', 'true');
+            
+            selectedFiles.forEach((file, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'audio-item';
+                itemDiv.draggable = true;
+                itemDiv.dataset.index = index;
+                
+                // 检测文件类型
+                const isVideo = file.type.startsWith('video/');
+                const isAudio = file.type.startsWith('audio/');
+                
+                itemDiv.innerHTML = `
+                    <div class="item-header">
+                        <span class="file-type-indicator">${isVideo ? '[视频]' : '[音频]'}</span>
+                        <span class="file-name">${file.name}</span>
+                        <button class="delete-btn" onclick="removeFile(${index})">删除</button>
+                    </div>
+                    <div class="item-controls">
+                        <div class="form-group">
+                            <label for="volume-${index}">音量调整（分贝，不输入则不调整，如 2 或 -3）</label>
+                            <input type="number" id="volume-${index}" step="0.1" placeholder="不调整请留空">
+                        </div>
+                        <div class="form-group">
+                            <label>截取设置</label>
+                            <div class="trim-controls">
+                                <div class="trim-progress-container">
+                                    <input type="range" id="trim-start-${index}" class="trim-slider start-slider" min="0" max="100" value="0" step="1">
+                                    <input type="range" id="trim-end-${index}" class="trim-slider end-slider" min="0" max="100" value="100" step="1">
+                                    <div class="trim-progress-bar"></div>
+                                </div>
+                                <div class="trim-time-inputs">
+                                    <label>开始时间：</label>
+                                    <input type="number" id="start-time-${index}" step="0.1" min="0" placeholder="0">
+                                    <label>结束时间：</label>
+                                    <input type="number" id="end-time-${index}" step="0.1" min="0" placeholder="全长">
+                                </div>
+                                <button class="play-btn" onclick="playFile(${index})">播放</button>
+                                <button class="pause-btn" onclick="pauseFile(${index})")>暂停</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // 添加拖拽事件监听
+                itemDiv.addEventListener('dragstart', handleDragStart);
+                itemDiv.addEventListener('dragover', handleDragOver);
+                itemDiv.addEventListener('drop', handleDrop);
+                
+                audioItemsContainer.appendChild(itemDiv);
+            });
+        }
+
+        // 删除文件
+        window.removeFile = function(index) {
+            selectedFiles.splice(index, 1);
+            renderFileItems();
+        };
+
+        // 拖拽排序功能
+        let draggedItem = null;
+
+        function handleDragStart(e) {
+            draggedItem = this;
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDrop(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            if (draggedItem !== this) {
+                const draggedIndex = parseInt(draggedItem.dataset.index);
+                const targetIndex = parseInt(this.dataset.index);
+                
+                // 重新排列文件
+                const [movedFile] = selectedFiles.splice(draggedIndex, 1);
+                selectedFiles.splice(targetIndex, 0, movedFile);
+                
+                // 重新渲染
+                renderFileItems();
+            }
+            
+            return false;
+        }
+
+        // 播放和暂停功能（占位，实际播放需要更复杂的实现）
+        window.playFile = function(index) {
+            const file = selectedFiles[index];
+            console.log('播放文件:', file.name);
+            // 实际播放逻辑需要使用HTML5 Audio/Video API
+        };
+
+        window.pauseFile = function(index) {
+            const file = selectedFiles[index];
+            console.log('暂停文件:', file.name);
+        };
+
         async function generateMergeVolumeCommand() {
-            const files = document.getElementById('merge-files').files;
-            if (files.length === 0) return;
+            if (selectedFiles.length === 0) return;
 
             // 确保FFmpeg已经加载完成
             if (!ffmpegLoaded) {
@@ -459,53 +637,24 @@
             }
 
             const inputFiles = [];
-            const filterCommands = [];
-            let filterComplex = '';
-            const outputExt = files.length > 1 ? 'mp3' : files[0].name.split('.').pop();
+            let outputExt = 'mp3';
+            
+            // 检测输出格式（使用第一个文件的格式）
+            if (selectedFiles.length > 0) {
+                const firstFile = selectedFiles[0];
+                const isVideo = firstFile.type.startsWith('video/');
+                const isAudio = firstFile.type.startsWith('audio/');
+                outputExt = isVideo ? 'mp4' : 'mp3';
+            }
+            
             const outputFileName = getOutputFileName(outputExt);
 
             // 生成文件列表但不写入文件，文件将在执行命令时写入
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const volume = document.getElementById(`volume-${i}`).value;
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
                 // 使用原始文件名作为输入，让命令更直观
                 const originalName = file.name;
                 inputFiles.push(originalName);
-                
-                // 音量调整 - 只有调整音量时才添加到filterCommands
-                if (volume) {
-                    filterCommands.push(`[${i}:a]volume=${volume}[a${i}]`);
-                }
-            }
-
-            // 处理拼接逻辑
-            if (files.length > 1) {
-                // 多个文件：调整音量后拼接
-                let filterComplexParts = [];
-                let filteredStreams = [];
-                
-                // 生成音量调整命令和流映射
-                for (let i = 0; i < files.length; i++) {
-                    const volume = document.getElementById(`volume-${i}`).value;
-                    if (volume) {
-                        filterComplexParts.push(`[${i}:a]volume=${volume}[a${i}]`);
-                        filteredStreams.push(`[a${i}]`);
-                    } else {
-                        filteredStreams.push(`[${i}:a]`);
-                    }
-                }
-                
-                // 添加拼接命令
-                filterComplexParts.push(`${filteredStreams.join('')}concat=n=${files.length}:v=0:a=1[outa]`);
-                
-                // 生成完整的filter_complex参数
-                filterComplex = `-filter_complex "${filterComplexParts.join(';')}" -map "[outa]"`;
-            } else {
-                // 单个文件：仅调整音量
-                const volume = document.getElementById('volume-0').value;
-                if (volume) {
-                    filterComplex = `-filter:a "volume=${volume}"`;
-                }
             }
 
             // 生成FFmpeg命令
@@ -514,21 +663,79 @@
                 command.push('-i', inputFiles[i]);
             }
             
-            // 添加filter_complex参数（如果有）
-            if (filterComplex) {
-                // 解析filterComplex为命令参数
-                const filterParts = filterComplex.split('"');
-                if (filterParts.length >= 3) {
-                    command.push('-filter_complex', filterParts[1]); // 取引号内的内容
-                    command.push('-map', '[outa]');
+            // 处理每个文件的截取和音量调整
+            let filterComplexParts = [];
+            let processedAudioStreams = [];
+            let processedVideoStreams = [];
+            
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const volume = document.getElementById(`volume-${i}`).value;
+                const startTime = document.getElementById(`start-time-${i}`).value;
+                const endTime = document.getElementById(`end-time-${i}`).value;
+                
+                // 处理音频流
+                const audioStreamLabel = `[${i}:a]`;
+                const processedAudioLabel = `[a${i}]`;
+                
+                if (volume) {
+                    filterComplexParts.push(`${audioStreamLabel}volume=${volume}${processedAudioLabel}`);
+                    processedAudioStreams.push(processedAudioLabel);
+                } else {
+                    processedAudioStreams.push(audioStreamLabel);
+                }
+                
+                // 处理视频流
+                if (file.type.startsWith('video/')) {
+                    const videoStreamLabel = `[${i}:v]`;
+                    processedVideoStreams.push(videoStreamLabel);
                 }
             }
             
-            // 添加必要的编码器参数，确保合并不同格式音频时能正确处理
-            // 对于concat滤镜，我们需要明确指定编码器
-            command.push('-c:a', 'libmp3lame');
-            command.push('-q:a', '4'); // 设置MP3质量
+            // 添加拼接命令
+            if (selectedFiles.length > 1) {
+                const hasVideo = selectedFiles.some(file => file.type.startsWith('video/'));
+                const hasAudio = selectedFiles.some(file => file.type.startsWith('audio/'));
+                
+                // 拼接参数
+                let concatParams = `concat=n=${selectedFiles.length}`;
+                concatParams += hasVideo ? ':v=1' : ':v=0';
+                concatParams += hasAudio ? ':a=1' : ':a=0';
+                
+                // 输入流
+                const inputStreams = [...processedVideoStreams, ...processedAudioStreams];
+                
+                // 输出标签
+                let outputLabels = '';
+                if (hasVideo) outputLabels += '[outv]';
+                if (hasAudio) outputLabels += '[outa]';
+                
+                filterComplexParts.push(`${inputStreams.join('')}${concatParams}${outputLabels}`);
+            }
             
+            // 生成完整的filter_complex参数
+            if (filterComplexParts.length > 0) {
+                command.push('-filter_complex', filterComplexParts.join(';'));
+                
+                // 根据实际情况添加map参数
+                const hasVideo = selectedFiles.some(file => file.type.startsWith('video/'));
+                const hasAudio = selectedFiles.some(file => file.type.startsWith('audio/'));
+                
+                if (hasVideo) command.push('-map', '[outv]');
+                if (hasAudio) command.push('-map', '[outa]');
+            }
+            
+            // 添加必要的编码器参数
+            const hasVideo = selectedFiles.some(file => file.type.startsWith('video/'));
+            const hasAudio = selectedFiles.some(file => file.type.startsWith('audio/'));
+            
+            if (hasVideo) command.push('-c:v', 'libx264');
+            if (hasAudio) {
+                command.push('-c:a', 'libmp3lame');
+                command.push('-q:a', '4');
+            }
+            
+            // 添加输出文件
             command.push(outputFileName);
             
             // 显示命令并存储上下文（添加ffmpeg前缀）
@@ -537,152 +744,9 @@
             commandGroup.classList.remove('hidden');
             currentContext = {
                 type: 'merge-volume',
-                data: { 
+                data: {
                     progressBar: document.getElementById('merge-volume-progress'),
-                    files: files, // 存储files对象，以便在执行命令时使用
-                    filesLength: files.length
-                },
-                outputExt: outputExt
-            };
-        }
-
-        // ---------------------- 视频转码功能 ----------------------
-        document.getElementById('video-convert-file').addEventListener('change', validateVideoConvertForm);
-        document.getElementById('generate-video-convert-command').addEventListener('click', generateVideoConvertCommand);
-
-        function validateVideoConvertForm() {
-            const file = document.getElementById('video-convert-file').files[0];
-            const button = document.getElementById('generate-video-convert-command');
-            button.disabled = !file;
-        }
-
-        async function generateVideoConvertCommand() {
-            const file = document.getElementById('video-convert-file').files[0];
-            const format = document.getElementById('video-convert-format').value;
-            const outputFileName = getOutputFileName(format);
-            
-            // 确保FFmpeg已经加载完成
-            if (!ffmpegLoaded) {
-                await loadFFmpeg();
-            }
-            
-            // 写入文件
-            const originalExt = file.name.split('.').pop();
-            const inputName = `input.${originalExt}`;
-            await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
-            
-            // 生成FFmpeg命令
-            const command = [
-                '-i', inputName,
-                '-c', 'copy',
-                outputFileName
-            ];
-            
-            // 显示命令并存储上下文（添加ffmpeg前缀）
-            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
-            ffmpegCommandInput.readOnly = false;
-            commandGroup.classList.remove('hidden');
-            currentContext = {
-                type: 'video-convert',
-                data: { progressBar: document.getElementById('video-convert-progress') },
-                outputExt: format
-            };
-        }
-
-        // ---------------------- 音频提取功能 ----------------------
-        document.getElementById('extract-audio-file').addEventListener('change', validateExtractAudioForm);
-        document.getElementById('generate-extract-audio-command').addEventListener('click', generateExtractAudioCommand);
-
-        function validateExtractAudioForm() {
-            const file = document.getElementById('extract-audio-file').files[0];
-            const button = document.getElementById('generate-extract-audio-command');
-            button.disabled = !file;
-        }
-
-        async function generateExtractAudioCommand() {
-            const file = document.getElementById('extract-audio-file').files[0];
-            const format = document.getElementById('extract-audio-format').value;
-            const outputFileName = getOutputFileName(format);
-            
-            // 确保FFmpeg已经加载完成
-            if (!ffmpegLoaded) {
-                await loadFFmpeg();
-            }
-            
-            // 写入文件
-            const originalExt = file.name.split('.').pop();
-            const inputName = `input.${originalExt}`;
-            await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
-            
-            // 生成FFmpeg命令
-            const command = [
-                '-i', inputName,
-                '-vn', // 不包含视频
-                '-acodec', 'copy',
-                outputFileName
-            ];
-            
-            // 显示命令并存储上下文（添加ffmpeg前缀）
-            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
-            ffmpegCommandInput.readOnly = false;
-            commandGroup.classList.remove('hidden');
-            currentContext = {
-                type: 'extract-audio',
-                data: { progressBar: document.getElementById('extract-audio-progress') },
-                outputExt: format
-            };
-        }
-
-        // ---------------------- 视频合并功能 ----------------------
-        document.getElementById('merge-video-files').addEventListener('change', validateMergeVideoForm);
-        document.getElementById('generate-merge-video-command').addEventListener('click', generateMergeVideoCommand);
-
-        function validateMergeVideoForm() {
-            const files = document.getElementById('merge-video-files').files;
-            const button = document.getElementById('generate-merge-video-command');
-            button.disabled = files.length < 2;
-        }
-
-        async function generateMergeVideoCommand() {
-            const files = document.getElementById('merge-video-files').files;
-            if (files.length < 2) return;
-
-            // 确保FFmpeg已经加载完成
-            if (!ffmpegLoaded) {
-                await loadFFmpeg();
-            }
-
-            const outputExt = 'mp4';
-            const outputFileName = getOutputFileName(outputExt);
-            
-            // 生成文件列表但不写入文件，文件将在执行命令时写入
-            const inputFiles = [];
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                // 使用原始文件名作为输入，让命令更直观
-                const originalName = file.name;
-                inputFiles.push(originalName);
-            }
-            
-            // 生成FFmpeg命令
-            const command = [
-                '-f', 'concat',
-                '-safe', '0',
-                '-i', 'filelist.txt',
-                '-c', 'copy',
-                '-avoid_negative_ts', 'make_zero',
-                outputFileName
-            ];
-            
-            // 显示命令并存储上下文（添加ffmpeg前缀）
-            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
-            ffmpegCommandInput.readOnly = false;
-            commandGroup.classList.remove('hidden');
-            currentContext = {
-                type: 'merge-video',
-                data: { 
-                    progressBar: document.getElementById('merge-video-progress'),
-                    files: files // 存储files对象，以便在执行命令时重新生成filelist.txt
+                    files: selectedFiles // 存储files对象，以便在执行命令时使用
                 },
                 outputExt: outputExt
             };
@@ -722,21 +786,6 @@
                         const originalName = file.name;
                         await ffmpeg.writeFile(originalName, new Uint8Array(await file.arrayBuffer()));
                     }
-                }
-                
-                // 对于视频合并任务，重新生成filelist.txt
-                if (currentContext.type === 'merge-video' && currentContext.data.files) {
-                    const files = currentContext.data.files;
-                    const inputFiles = [];
-                    for (let i = 0; i < files.length; i++) {
-                        const file = files[i];
-                        // 使用原始文件名作为输入，让命令更直观
-                        const originalName = file.name;
-                        await ffmpeg.writeFile(originalName, new Uint8Array(await file.arrayBuffer()));
-                        inputFiles.push(originalName);
-                    }
-                    const filelistContent = inputFiles.map(f => `file '${f}'`).join('\n');
-                    await ffmpeg.writeFile('filelist.txt', filelistContent);
                 }
                 
                 console.log('执行FFmpeg命令:', command.join(' '));
