@@ -5,6 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>前端音频处理工具 - 基于FFmpeg.wasm</title>
     <style>
+        /* 语言切换按钮样式 */
+        .language-switch {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .language-switch button {
+            padding: 0.5rem 1rem;
+            background-color: #f8f9fa;
+            color: #495057;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            width: auto;
+            margin: 0;
+        }
+        
+        .language-switch button:hover {
+            background-color: #e9ecef;
+        }
+        
+        .language-switch button.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        /* 适配移动端 */
+        @media (max-width: 600px) {
+            .language-switch {
+                position: static;
+                margin-bottom: 1rem;
+                justify-content: center;
+            }
+        }
         * {
             margin: 0;
             padding: 0;
@@ -315,25 +355,31 @@
     </style>
 </head>
 <body>
-    <h1>前端音频处理工具</h1>
+    <!-- 语言切换按钮 -->
+    <div class="language-switch">
+        <button id="lang-zh" class="active">中文</button>
+        <button id="lang-en">English</button>
+    </div>
+    
+    <h1 data-i18n="title">前端音频处理工具</h1>
     <div class="form-group">
-        <label for="function-select">选择功能</label>
+        <label for="function-select" data-i18n="select_function">选择功能</label>
         <select id="function-select">
-            <option value="">--请选择功能--</option>
-            <option value="convert">[音频/视频]转换格式(音频提取、音频视频格式转换)</option>
-            <option value="merge-volume">[音频/视频]截取、拼接与调整音量</option>
+            <option value="" data-i18n="please_select_function">--请选择功能--</option>
+            <option value="convert" data-i18n="convert_format_option">[音频/视频]转换格式(音频提取、音频视频格式转换)</option>
+            <option value="merge-volume" data-i18n="merge_volume_option">[音频/视频]截取、拼接与调整音量</option>
         </select>
     </div>
 
     <!-- 转换格式模块 -->
     <div id="convert-module" class="module hidden">
-        <h2>[音频/视频]转换格式</h2>
+        <h2 data-i18n="convert_format_title">[音频/视频]转换格式</h2>
         <div class="form-group">
-            <label for="convert-file">选择文件</label>
+            <label for="convert-file" data-i18n="select_file">选择文件</label>
             <input type="file" id="convert-file" accept="audio/*,video/*">
         </div>
         <div class="form-group">
-            <label for="convert-format">目标格式</label>
+            <label for="convert-format" data-i18n="target_format">目标格式</label>
             <select id="convert-format">
                 <!-- 选项将根据选择的文件类型动态生成 -->
             </select>
@@ -341,34 +387,140 @@
         <div class="progress">
             <div id="convert-progress" class="progress-bar"></div>
         </div>
-        <button id="generate-convert-command" type="button">生成FFmpeg命令</button>
+        <button id="generate-convert-command" type="button" data-i18n="generate_ffmpeg_command">生成FFmpeg命令</button>
     </div>
 
     <!-- 截取、拼接与调整音量模块 -->
     <div id="merge-volume-module" class="module hidden">
-        <h2>[音频/视频]截取、拼接与调整音量</h2>
+        <h2 data-i18n="merge_volume_title">[音频/视频]截取、拼接与调整音量</h2>
         <div class="form-group">
-            <label for="merge-files">选择文件</label>
+            <label for="merge-files" data-i18n="select_files">选择文件</label>
             <input type="file" id="merge-files" accept="audio/*,video/*" multiple>
         </div>
         <div id="audio-items-container"></div>
         <div class="progress">
             <div id="merge-volume-progress" class="progress-bar"></div>
         </div>
-        <button id="add-more-files" type="button">添加文件</button>
-        <button id="generate-merge-volume-command" type="button">生成FFmpeg命令</button>
+        <button id="add-more-files" type="button" data-i18n="add_more_files">添加文件</button>
+        <button id="generate-merge-volume-command" type="button" data-i18n="generate_ffmpeg_command">生成FFmpeg命令</button>
     </div>
 
     <!-- FFmpeg命令预览与编辑 -->
     <div class="command-group hidden" id="command-group">
-        <label for="ffmpeg-command">FFmpeg 命令（可手动修改）</label>
+        <label for="ffmpeg-command" data-i18n="ffmpeg_command_label">FFmpeg 命令（可手动修改）</label>
         <textarea id="ffmpeg-command" readonly placeholder="FFmpeg命令将在此处生成..."></textarea>
-        <button id="confirm-command" type="button">确认命令并执行</button>
+        <button id="confirm-command" type="button" data-i18n="confirm_and_execute">确认命令并执行</button>
     </div>
 
     <script type="module">
         // 使用本地FFmpeg依赖
         import { FFmpeg } from './static/ffmpeg/ffmpeg/index.js';
+        
+        // 翻译映射
+        const translations = {
+            // 中文翻译
+            zh: {
+                title: '前端音频处理工具',
+                select_function: '选择功能',
+                please_select_function: '--请选择功能--',
+                convert_format_option: '[音频/视频]转换格式(音频提取、音频视频格式转换)',
+                merge_volume_option: '[音频/视频]截取、拼接与调整音量',
+                convert_format_title: '[音频/视频]转换格式',
+                select_file: '选择文件',
+                target_format: '目标格式',
+                generate_ffmpeg_command: '生成FFmpeg命令',
+                merge_volume_title: '[音频/视频]截取、拼接与调整音量',
+                select_files: '选择文件',
+                add_more_files: '添加文件',
+                ffmpeg_command_label: 'FFmpeg 命令（可手动修改）',
+                confirm_and_execute: '确认命令并执行',
+                volume_adjust: '音量调整（分贝，不输入则不调整，如 2 或 -3）',
+                no_adjust: '不调整请留空',
+                trim_settings: '截取设置',
+                start_time: '开始时间：',
+                end_time: '结束时间：',
+                duration: '时长：',
+                play: '播放',
+                pause: '暂停',
+                delete: '删除',
+                video_label: '[视频]',
+                audio_label: '[音频]',
+                processing: '处理中...',
+                processing_complete: '处理完成！文件已下载。',
+                ffmpeg_loading: 'FFmpeg 正在加载中，请稍候！',
+                execution_failed: '执行失败：'
+            },
+            // 英文翻译
+            en: {
+                title: 'Frontend Audio Processing Tool',
+                select_function: 'Select Function',
+                please_select_function: '--Please Select Function--',
+                convert_format_option: '[Audio/Video] Convert Format (Extract Audio, Audio/Video Format Conversion)',
+                merge_volume_option: '[Audio/Video] Trim, Merge & Adjust Volume',
+                convert_format_title: '[Audio/Video] Convert Format',
+                select_file: 'Select File',
+                target_format: 'Target Format',
+                generate_ffmpeg_command: 'Generate FFmpeg Command',
+                merge_volume_title: '[Audio/Video] Trim, Merge & Adjust Volume',
+                select_files: 'Select Files',
+                add_more_files: 'Add More Files',
+                ffmpeg_command_label: 'FFmpeg Command (Can be modified manually)',
+                confirm_and_execute: 'Confirm Command & Execute',
+                volume_adjust: 'Volume Adjustment (dB, leave blank for no adjustment, e.g., 2 or -3)',
+                no_adjust: 'Leave blank for no adjustment',
+                trim_settings: 'Trim Settings',
+                start_time: 'Start Time:',
+                end_time: 'End Time:',
+                duration: 'Duration:',
+                play: 'Play',
+                pause: 'Pause',
+                delete: 'Delete',
+                video_label: '[Video]',
+                audio_label: '[Audio]',
+                processing: 'Processing...',
+                processing_complete: 'Processing complete! File has been downloaded.',
+                ffmpeg_loading: 'FFmpeg is loading, please wait!',
+                execution_failed: 'Execution failed: '
+            }
+        };
+
+        // 当前语言
+        let currentLanguage = 'zh';
+
+        // 翻译函数
+        function translate() {
+            const elements = document.querySelectorAll('[data-i18n]');
+            elements.forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[currentLanguage][key]) {
+                    element.textContent = translations[currentLanguage][key];
+                }
+            });
+            
+            // 更新标题
+            document.title = currentLanguage === 'zh' ? '前端音频处理工具 - 基于FFmpeg.wasm' : 'Frontend Audio Processing Tool - Based on FFmpeg.wasm';
+            
+            // 更新placeholder
+            const ffmpegCommandInput = document.getElementById('ffmpeg-command');
+            if (ffmpegCommandInput) {
+                ffmpegCommandInput.placeholder = currentLanguage === 'zh' ? 'FFmpeg命令将在此处生成...' : 'FFmpeg command will be generated here...';
+            }
+        }
+
+        // 初始化语言切换按钮事件
+        document.getElementById('lang-zh').addEventListener('click', () => {
+            currentLanguage = 'zh';
+            document.getElementById('lang-zh').classList.add('active');
+            document.getElementById('lang-en').classList.remove('active');
+            translate();
+        });
+
+        document.getElementById('lang-en').addEventListener('click', () => {
+            currentLanguage = 'en';
+            document.getElementById('lang-en').classList.add('active');
+            document.getElementById('lang-zh').classList.remove('active');
+            translate();
+        });
         
         const ffmpeg = new FFmpeg({ 
             log: true
@@ -400,6 +552,9 @@
         const convertModule = document.getElementById('convert-module');
         const mergeVolumeModule = document.getElementById('merge-volume-module');
         const audioItemsContainer = document.getElementById('audio-items-container');
+        
+        // 初始化翻译
+        translate();
 
         // 功能切换
         functionSelect.addEventListener('change', (e) => {
@@ -659,19 +814,22 @@
                 const isVideo = file.type.startsWith('video/');
                 const isAudio = file.type.startsWith('audio/');
                 
+                // 获取当前语言的翻译
+                const t = translations[currentLanguage];
+                
                 itemDiv.innerHTML = `
                     <div class="item-header">
-                        <span class="file-type-indicator">${isVideo ? '[视频]' : '[音频]'}</span>
+                        <span class="file-type-indicator">${isVideo ? t.video_label : t.audio_label}</span>
                         <span class="file-name">${file.name}</span>
-                        <button class="delete-btn" onclick="removeFile(${index})">删除</button>
+                        <button class="delete-btn" onclick="removeFile(${index})" data-i18n="delete">${t.delete}</button>
                     </div>
                     <div class="item-controls">
                         <div class="form-group">
-                            <label for="volume-${index}">音量调整（分贝，不输入则不调整，如 2 或 -3）</label>
-                            <input type="number" id="volume-${index}" step="0.1" placeholder="不调整请留空">
+                            <label for="volume-${index}" data-i18n="volume_adjust">${t.volume_adjust}</label>
+                            <input type="number" id="volume-${index}" step="0.1" placeholder="${t.no_adjust}">
                         </div>
                         <div class="form-group">
-                            <label>截取设置</label>
+                            <label data-i18n="trim_settings">${t.trim_settings}</label>
                             <div class="trim-controls">
                                 <div class="trim-progress-container">
                                     <input type="range" id="trim-start-${index}" class="trim-slider start-slider" min="0" max="100" value="0" step="0.1">
@@ -679,15 +837,15 @@
                                     <input type="range" id="trim-end-${index}" class="trim-slider end-slider" min="0" max="100" value="100" step="0.1">
                                 </div>
                                 <div class="trim-time-inputs">
-                                    <label>开始时间：</label>
+                                    <label data-i18n="start_time">${t.start_time}</label>
                                     <input type="text" id="start-time-${index}" placeholder="00:00:00.000">
-                                    <label>结束时间：</label>
+                                    <label data-i18n="end_time">${t.end_time}</label>
                                     <input type="text" id="end-time-${index}" placeholder="00:00:00.000">
-                                    <label>时长：</label>
+                                    <label data-i18n="duration">${t.duration}</label>
                                     <span id="trimmed-duration-${index}">00:00:00.000</span>
                                 </div>
-                                <button class="play-btn" onclick="playFile(${index})">播放</button>
-                                <button class="pause-btn" onclick="pauseFile(${index})">暂停</button>
+                                <button class="play-btn" onclick="playFile(${index})" data-i18n="play">${t.play}</button>
+                                <button class="pause-btn" onclick="pauseFile(${index})" data-i18n="pause">${t.pause}</button>
                             </div>
                         </div>
                     </div>
@@ -1197,7 +1355,7 @@
         // ---------------------- 确认命令并执行 ----------------------
         confirmCommandBtn.addEventListener('click', async () => {
             if (!ffmpegLoaded) {
-                alert('FFmpeg 正在加载中，请稍候！');
+                alert(translations[currentLanguage].ffmpeg_loading);
                 return;
             }
 
@@ -1269,7 +1427,7 @@
                 a.click();
                 URL.revokeObjectURL(url);
                 
-                alert('处理完成！文件已下载。');
+                alert(translations[currentLanguage].processing_complete);
             } catch (e) {
                 const errorMessage = e.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
                 console.error('FFmpeg执行错误:', e);
@@ -1280,7 +1438,7 @@
                     ffmpegLogs.forEach(log => console.log(log));
                 }
                 
-                alert(`执行失败：${errorMessage}\n详细日志请查看浏览器控制台`);
+                alert(`${translations[currentLanguage].execution_failed}${errorMessage}\n详细日志请查看浏览器控制台`);
             } finally {
                 progressBar.style.width = '0%';
                 // 清空日志数组
