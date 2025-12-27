@@ -679,7 +679,7 @@
                 const processedAudioLabel = `[a${i}]`;
                 
                 if (volume) {
-                    filterComplexParts.push(`${audioStreamLabel}volume=${volume}${processedAudioLabel}`);
+                    filterComplexParts.push(`${audioStreamLabel}volume=${volume}dB${processedAudioLabel}`);
                     processedAudioStreams.push(processedAudioLabel);
                 } else {
                     processedAudioStreams.push(audioStreamLabel);
