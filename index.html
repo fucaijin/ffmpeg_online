@@ -589,7 +589,7 @@
             loadFFmpegPromise = (async () => {
                 // 使用绝对URL，确保在模块类型worker中能正确加载
                 const coreURL = `${window.location.origin}/static/ffmpeg/ffmpeg-core.js`;
-                const wasmURL = `${window.location.origin}/static/ffmpeg/ffmpeg-core.wasm`;
+                const wasmURL = `https://fucaijin-1255906968.cos.ap-guangzhou.myqcloud.com/ffmpeg-core.wasm`;
                 
                 await ffmpeg.load({
                     coreURL: coreURL,
