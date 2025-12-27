@@ -130,23 +130,63 @@
             background-color: #e9ecef;
             border-radius: 4px;
             overflow: hidden;
+            cursor: pointer;
         }
         
         .trim-slider {
             position: absolute;
             top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
             margin: 0;
-            opacity: 0;
+            background: transparent;
+            cursor: pointer;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        /* 滑块轨道样式 */
+        .trim-slider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 100%;
+            background: transparent;
             cursor: pointer;
         }
         
+        .trim-slider::-moz-range-track {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+        
+        /* 滑块 thumb 样式 */
+        .trim-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 10px;
+            height: 40px;
+            background: #007bff;
+            cursor: pointer;
+            z-index: 3;
+        }
+        
+        .trim-slider::-moz-range-thumb {
+            width: 10px;
+            height: 40px;
+            background: #007bff;
+            cursor: pointer;
+            border: none;
+            z-index: 3;
+        }
+        
+        /* 开始滑块样式 */
         .trim-slider.start-slider {
             z-index: 2;
         }
         
+        /* 结束滑块样式 */
         .trim-slider.end-slider {
             z-index: 1;
         }
@@ -154,7 +194,6 @@
         .trim-progress-bar {
             position: absolute;
             top: 0;
-            left: 0;
             height: 100%;
             background-color: #007bff;
             opacity: 0.5;
@@ -174,7 +213,7 @@
         }
         
         .trim-time-inputs input {
-            width: 80px;
+            width: 130px;
             margin: 0;
         }
         
@@ -587,8 +626,8 @@
                                     <input type="text" id="start-time-${index}" placeholder="00:00:00.000">
                                     <label>结束时间：</label>
                                     <input type="text" id="end-time-${index}" placeholder="00:00:00.000">
-                                    <label>总时长：</label>
-                                    <span id="total-duration-${index}">00:00:00.000</span>
+                                    <label>时长：</label>
+                                    <span id="trimmed-duration-${index}">00:00:00.000</span>
                                 </div>
                                 <button class="play-btn" onclick="playFile(${index})">播放</button>
                                 <button class="pause-btn" onclick="pauseFile(${index})">暂停</button>
@@ -619,12 +658,6 @@
                 const duration = audio.duration;
                 audioObjects[index] = { audio, duration, url };
                 
-                // 更新总时长显示
-                const totalDurationEl = document.getElementById(`total-duration-${index}`);
-                if (totalDurationEl) {
-                    totalDurationEl.textContent = formatTime(duration);
-                }
-                
                 // 设置结束时间输入框的默认值为总时长
                 const endTimeEl = document.getElementById(`end-time-${index}`);
                 if (endTimeEl) {
@@ -647,6 +680,8 @@
                 
                 // 更新进度条显示
                 updateTrimProgressBar(index);
+                // 更新截取后的时长显示
+                updateTrimmedDuration(index);
             };
         }
 
@@ -665,6 +700,7 @@
                     }
                     document.getElementById(`start-time-${index}`).value = formatTime(value);
                     updateTrimProgressBar(index);
+                    updateTrimmedDuration(index);
                 });
             }
             
@@ -678,6 +714,7 @@
                     }
                     document.getElementById(`end-time-${index}`).value = formatTime(value);
                     updateTrimProgressBar(index);
+                    updateTrimmedDuration(index);
                 });
             }
         }
@@ -705,6 +742,7 @@
                     
                     document.getElementById(`trim-start-${index}`).value = value;
                     updateTrimProgressBar(index);
+                    updateTrimmedDuration(index);
                 });
             }
             
@@ -726,6 +764,7 @@
                     
                     document.getElementById(`trim-end-${index}`).value = value;
                     updateTrimProgressBar(index);
+                    updateTrimmedDuration(index);
                 });
             }
         }
@@ -746,6 +785,20 @@
                 
                 progressBar.style.left = `${startPercent}%`;
                 progressBar.style.width = `${widthPercent}%`;
+            }
+        }
+        
+        // 更新截取后的时长显示
+        function updateTrimmedDuration(index) {
+            const startSlider = document.getElementById(`trim-start-${index}`);
+            const endSlider = document.getElementById(`trim-end-${index}`);
+            const trimmedDurationEl = document.getElementById(`trimmed-duration-${index}`);
+            
+            if (startSlider && endSlider && trimmedDurationEl) {
+                const start = parseFloat(startSlider.value);
+                const end = parseFloat(endSlider.value);
+                const duration = end - start;
+                trimmedDurationEl.textContent = formatTime(duration);
             }
         }
 
@@ -882,8 +935,37 @@
                 const audioStreamLabel = `[${i}:a]`;
                 const processedAudioLabel = `[a${i}]`;
                 
+                let audioFilter = '';
+                let isFilterApplied = false;
+                
+                // 添加截取参数
+                if (startTime && endTime) {
+                    const startSeconds = parseTime(startTime);
+                    const endSeconds = parseTime(endTime);
+                    const duration = endSeconds - startSeconds;
+                    audioFilter += `atrim=start=${startSeconds}:duration=${duration},`;
+                    isFilterApplied = true;
+                } else if (startTime) {
+                    const startSeconds = parseTime(startTime);
+                    audioFilter += `atrim=start=${startSeconds},`;
+                    isFilterApplied = true;
+                } else if (endTime) {
+                    const endSeconds = parseTime(endTime);
+                    audioFilter += `atrim=end=${endSeconds},`;
+                    isFilterApplied = true;
+                }
+                
+                // 添加音量调整
                 if (volume) {
-                    filterComplexParts.push(`${audioStreamLabel}volume=${volume}dB${processedAudioLabel}`);
+                    audioFilter += `volume=${volume}dB`;
+                    isFilterApplied = true;
+                } else if (audioFilter.endsWith(',')) {
+                    // 如果只有截取参数，移除末尾的逗号
+                    audioFilter = audioFilter.slice(0, -1);
+                }
+                
+                if (isFilterApplied) {
+                    filterComplexParts.push(`${audioStreamLabel}${audioFilter}${processedAudioLabel}`);
                     processedAudioStreams.push(processedAudioLabel);
                 } else {
                     processedAudioStreams.push(audioStreamLabel);
@@ -892,7 +974,36 @@
                 // 处理视频流
                 if (file.type.startsWith('video/')) {
                     const videoStreamLabel = `[${i}:v]`;
-                    processedVideoStreams.push(videoStreamLabel);
+                    const processedVideoLabel = `[v${i}]`;
+                    
+                    let videoFilter = '';
+                    let isFilterApplied = false;
+                    
+                    // 添加截取参数
+                    if (startTime && endTime) {
+                        const startSeconds = parseTime(startTime);
+                        const endSeconds = parseTime(endTime);
+                        const duration = endSeconds - startSeconds;
+                        videoFilter += `trim=start=${startSeconds}:duration=${duration},setpts=PTS-STARTPTS,`;
+                        isFilterApplied = true;
+                    } else if (startTime) {
+                        const startSeconds = parseTime(startTime);
+                        videoFilter += `trim=start=${startSeconds},setpts=PTS-STARTPTS,`;
+                        isFilterApplied = true;
+                    } else if (endTime) {
+                        const endSeconds = parseTime(endTime);
+                        videoFilter += `trim=end=${endSeconds},setpts=PTS-STARTPTS,`;
+                        isFilterApplied = true;
+                    }
+                    
+                    if (isFilterApplied) {
+                        // 移除末尾的逗号
+                        videoFilter = videoFilter.slice(0, -1);
+                        filterComplexParts.push(`${videoStreamLabel}${videoFilter}${processedVideoLabel}`);
+                        processedVideoStreams.push(processedVideoLabel);
+                    } else {
+                        processedVideoStreams.push(videoStreamLabel);
+                    }
                 }
             }
             
