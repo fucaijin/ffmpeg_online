@@ -12,7 +12,6 @@
             font-family: Arial, sans-serif;
         }
         body {
-            max-width: 800px;
             margin: 2rem auto;
             padding: 0 1rem;
         }
@@ -161,24 +160,42 @@
             cursor: pointer;
         }
         
-        /* 滑块 thumb 样式 */
+        /* 滑块 thumb 样式 - 三角顶针型 */
         .trim-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 10px;
-            height: 40px;
-            background: #007bff;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 10px solid #007bff;
             cursor: pointer;
             z-index: 3;
+            transform: translateY(5px);
         }
         
         .trim-slider::-moz-range-thumb {
             width: 10px;
-            height: 40px;
-            background: #007bff;
+            height: 20px;
+            background: transparent;
             cursor: pointer;
             border: none;
             z-index: 3;
+            /* Firefox 使用背景图片模拟三角形 */
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='20' viewBox='0 0 10 20'><polygon points='0,0 10,0 5,20' fill='%23007bff'/></svg>");
+            background-size: 100% 100%;
+        }
+        
+        /* 开始滑块样式 - 显示为向下三角形 */
+        .trim-slider.start-slider::-webkit-slider-thumb {
+            border-top: none;
+            border-bottom: 10px solid #007bff;
+            transform: translateY(-5px);
+        }
+        
+        /* Firefox 开始滑块样式 */
+        .trim-slider.start-slider::-moz-range-thumb {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='20' viewBox='0 0 10 20'><polygon points='0,20 10,20 5,0' fill='%23007bff'/></svg>");
         }
         
         /* 开始滑块样式 */
@@ -188,7 +205,7 @@
         
         /* 结束滑块样式 */
         .trim-slider.end-slider {
-            z-index: 1;
+            z-index: 2;
         }
         
         .trim-progress-bar {
@@ -202,6 +219,7 @@
         
         .trim-time-inputs {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             gap: 1rem;
             margin-bottom: 1rem;
@@ -215,6 +233,31 @@
         .trim-time-inputs input {
             width: 130px;
             margin: 0;
+        }
+        
+        /* 移动端响应式设计 */
+        @media (max-width: 600px) {
+            .trim-time-inputs {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .trim-time-inputs > div {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                width: 100%;
+            }
+            
+            .trim-time-inputs label {
+                width: 80px;
+            }
+            
+            .trim-time-inputs input {
+                flex: 1;
+                min-width: 150px;
+            }
         }
         
         .play-btn, .pause-btn {
@@ -309,6 +352,7 @@
         <div class="progress">
             <div id="merge-volume-progress" class="progress-bar"></div>
         </div>
+        <button id="add-more-files" type="button">添加文件</button>
         <button id="generate-merge-volume-command" type="button">生成FFmpeg命令</button>
     </div>
 
@@ -551,6 +595,9 @@
         // ---------------------- 截取、拼接与调整音量功能 ----------------------
         document.getElementById('merge-files').addEventListener('change', handleMergeFilesSelect);
         document.getElementById('generate-merge-volume-command').addEventListener('click', generateMergeVolumeCommand);
+        document.getElementById('add-more-files').addEventListener('click', () => {
+            document.getElementById('merge-files').click();
+        });
 
         // 存储当前选择的文件列表
         let selectedFiles = [];
@@ -582,8 +629,15 @@
         };
 
         function handleMergeFilesSelect(e) {
-            selectedFiles = Array.from(e.target.files);
-            audioObjects = [];
+            const newFiles = Array.from(e.target.files);
+            if (selectedFiles.length > 0) {
+                // 追加新文件到现有列表
+                selectedFiles = [...selectedFiles, ...newFiles];
+            } else {
+                // 首次选择文件
+                selectedFiles = newFiles;
+            }
+            // 重新渲染文件列表
             renderFileItems();
         }
 
@@ -618,8 +672,8 @@
                             <div class="trim-controls">
                                 <div class="trim-progress-container">
                                     <input type="range" id="trim-start-${index}" class="trim-slider start-slider" min="0" max="100" value="0" step="0.1">
-                                    <input type="range" id="trim-end-${index}" class="trim-slider end-slider" min="0" max="100" value="100" step="0.1">
                                     <div class="trim-progress-bar"></div>
+                                    <input type="range" id="trim-end-${index}" class="trim-slider end-slider" min="0" max="100" value="100" step="0.1">
                                 </div>
                                 <div class="trim-time-inputs">
                                     <label>开始时间：</label>
@@ -636,10 +690,18 @@
                     </div>
                 `;
                 
-                // 添加拖拽事件监听
+                // 添加拖拽事件监听，但排除trim-controls区域
                 itemDiv.addEventListener('dragstart', handleDragStart);
                 itemDiv.addEventListener('dragover', handleDragOver);
                 itemDiv.addEventListener('drop', handleDrop);
+                
+                // 为trim-controls区域添加事件阻止，防止触发父元素的拖拽事件
+                const trimControls = itemDiv.querySelector('.trim-controls');
+                if (trimControls) {
+                    trimControls.addEventListener('dragstart', (e) => e.stopPropagation());
+                    trimControls.addEventListener('touchstart', (e) => e.stopPropagation());
+                    trimControls.addEventListener('mousedown', (e) => e.stopPropagation());
+                }
                 
                 audioItemsContainer.appendChild(itemDiv);
                 
@@ -689,33 +751,95 @@
         function addSliderEventListeners(index) {
             const startSlider = document.getElementById(`trim-start-${index}`);
             const endSlider = document.getElementById(`trim-end-${index}`);
+            const itemDiv = document.querySelector(`[data-index="${index}"]`);
+            
+            // 临时禁用拖拽排序的函数
+            const disableDragSort = () => {
+                if (itemDiv) {
+                    itemDiv.draggable = false;
+                }
+            };
+            
+            // 恢复拖拽排序的函数
+            const enableDragSort = () => {
+                if (itemDiv) {
+                    itemDiv.draggable = true;
+                }
+            };
+            
+            // 滑块输入事件处理
+            const handleStartSliderInput = () => {
+                const value = parseFloat(startSlider.value);
+                const endSlider = document.getElementById(`trim-end-${index}`);
+                if (value > parseFloat(endSlider.value)) {
+                    startSlider.value = endSlider.value;
+                    return;
+                }
+                document.getElementById(`start-time-${index}`).value = formatTime(value);
+                updateTrimProgressBar(index);
+                updateTrimmedDuration(index);
+            };
+            
+            const handleEndSliderInput = () => {
+                const value = parseFloat(endSlider.value);
+                const startSlider = document.getElementById(`trim-start-${index}`);
+                if (value < parseFloat(startSlider.value)) {
+                    endSlider.value = startSlider.value;
+                    return;
+                }
+                document.getElementById(`end-time-${index}`).value = formatTime(value);
+                updateTrimProgressBar(index);
+                updateTrimmedDuration(index);
+            };
             
             if (startSlider) {
-                startSlider.addEventListener('input', () => {
-                    const value = parseFloat(startSlider.value);
-                    const endSlider = document.getElementById(`trim-end-${index}`);
-                    if (value > parseFloat(endSlider.value)) {
-                        startSlider.value = endSlider.value;
-                        return;
-                    }
-                    document.getElementById(`start-time-${index}`).value = formatTime(value);
-                    updateTrimProgressBar(index);
-                    updateTrimmedDuration(index);
+                // 鼠标事件
+                startSlider.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    disableDragSort();
                 });
+                
+                startSlider.addEventListener('mouseup', () => {
+                    enableDragSort();
+                });
+                
+                // 触摸事件
+                startSlider.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                    disableDragSort();
+                }, { passive: false });
+                
+                startSlider.addEventListener('touchend', () => {
+                    enableDragSort();
+                });
+                
+                // 输入事件
+                startSlider.addEventListener('input', handleStartSliderInput);
             }
             
             if (endSlider) {
-                endSlider.addEventListener('input', () => {
-                    const value = parseFloat(endSlider.value);
-                    const startSlider = document.getElementById(`trim-start-${index}`);
-                    if (value < parseFloat(startSlider.value)) {
-                        endSlider.value = startSlider.value;
-                        return;
-                    }
-                    document.getElementById(`end-time-${index}`).value = formatTime(value);
-                    updateTrimProgressBar(index);
-                    updateTrimmedDuration(index);
+                // 鼠标事件
+                endSlider.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    disableDragSort();
                 });
+                
+                endSlider.addEventListener('mouseup', () => {
+                    enableDragSort();
+                });
+                
+                // 触摸事件
+                endSlider.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                    disableDragSort();
+                }, { passive: false });
+                
+                endSlider.addEventListener('touchend', () => {
+                    enableDragSort();
+                });
+                
+                // 输入事件
+                endSlider.addEventListener('input', handleEndSliderInput);
             }
         }
 
