@@ -240,13 +240,6 @@
         </select>
     </div>
 
-    <!-- FFmpeg命令预览与编辑 -->
-    <div class="command-group hidden" id="command-group">
-        <label for="ffmpeg-command">FFmpeg 命令（可手动修改）</label>
-        <textarea id="ffmpeg-command" readonly placeholder="FFmpeg命令将在此处生成..."></textarea>
-        <button id="confirm-command" type="button">确认命令并执行</button>
-    </div>
-
     <!-- 转换格式模块 -->
     <div id="convert-module" class="module hidden">
         <h2>[音频/视频]转换格式</h2>
@@ -278,6 +271,13 @@
             <div id="merge-volume-progress" class="progress-bar"></div>
         </div>
         <button id="generate-merge-volume-command" type="button">生成FFmpeg命令</button>
+    </div>
+
+    <!-- FFmpeg命令预览与编辑 -->
+    <div class="command-group hidden" id="command-group">
+        <label for="ffmpeg-command">FFmpeg 命令（可手动修改）</label>
+        <textarea id="ffmpeg-command" readonly placeholder="FFmpeg命令将在此处生成..."></textarea>
+        <button id="confirm-command" type="button">确认命令并执行</button>
     </div>
 
     <script type="module">
