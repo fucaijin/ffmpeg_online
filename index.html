@@ -233,6 +233,16 @@
         const ffmpeg = new FFmpeg({ 
             log: true
         });
+        
+        // 用于存储FFmpeg日志
+        let ffmpegLogs = [];
+        
+        // 添加日志监听器
+        ffmpeg.on('log', (log) => {
+            ffmpegLogs.push(log);
+            console.log('FFmpeg日志:', log);
+        });
+        
         let ffmpegLoaded = false;
         let loadFFmpegPromise = null;
         // 存储当前功能的上下文数据
@@ -358,6 +368,7 @@
                 '-ss', start,
                 '-to', end,
                 '-c', 'copy',
+                '-avoid_negative_ts', 'make_zero',
                 outputFileName
             ];
             
@@ -400,6 +411,7 @@
             // 生成FFmpeg命令
             const command = [
                 '-i', inputName,
+                '-c', 'copy',
                 outputFileName
             ];
             
@@ -508,6 +520,7 @@
                 const filterParts = filterComplex.split('"');
                 if (filterParts.length >= 3) {
                     command.push('-filter_complex', filterParts[1]); // 取引号内的内容
+                    command.push('-map', '[outa]');
                 }
             }
             
@@ -605,6 +618,7 @@
             const command = [
                 '-i', inputName,
                 '-vn', // 不包含视频
+                '-acodec', 'copy',
                 outputFileName
             ];
             
@@ -656,6 +670,7 @@
                 '-safe', '0',
                 '-i', 'filelist.txt',
                 '-c', 'copy',
+                '-avoid_negative_ts', 'make_zero',
                 outputFileName
             ];
             
@@ -767,9 +782,18 @@
             } catch (e) {
                 const errorMessage = e.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
                 console.error('FFmpeg执行错误:', e);
-                alert(`执行失败：${errorMessage}`);
+                
+                // 显示FFmpeg日志用于调试
+                if (ffmpegLogs.length > 0) {
+                    console.log('FFmpeg执行日志:');
+                    ffmpegLogs.forEach(log => console.log(log));
+                }
+                
+                alert(`执行失败：${errorMessage}\n详细日志请查看浏览器控制台`);
             } finally {
                 progressBar.style.width = '0%';
+                // 清空日志数组
+                ffmpegLogs = [];
             }
         });
     </script>
