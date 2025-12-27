@@ -361,8 +361,8 @@
                 outputFileName
             ];
             
-            // 显示命令并存储上下文
-            ffmpegCommandInput.value = command.join(' ');
+            // 显示命令并存储上下文（添加ffmpeg前缀）
+            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
             ffmpegCommandInput.readOnly = false;
             commandGroup.classList.remove('hidden');
             currentContext = {
@@ -403,8 +403,8 @@
                 outputFileName
             ];
             
-            // 显示命令并存储上下文
-            ffmpegCommandInput.value = command.join(' ');
+            // 显示命令并存储上下文（添加ffmpeg前缀）
+            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
             ffmpegCommandInput.readOnly = false;
             commandGroup.classList.remove('hidden');
             currentContext = {
@@ -456,9 +456,9 @@
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 const volume = document.getElementById(`volume-${i}`).value;
-                // 使用固定的.wav扩展名，确保FFmpeg能够正确识别
-                const inputName = `input${i}.wav`;
-                inputFiles.push(inputName);
+                // 使用原始文件名作为输入，让命令更直观
+                const originalName = file.name;
+                inputFiles.push(originalName);
                 
                 // 音量调整 - 只有调整音量时才添加到filterCommands
                 if (volume) {
@@ -469,37 +469,57 @@
             // 处理拼接逻辑
             if (files.length > 1) {
                 // 多个文件：调整音量后拼接
-                const filteredStreams = [];
+                let filterComplexParts = [];
+                let filteredStreams = [];
+                
+                // 生成音量调整命令和流映射
                 for (let i = 0; i < files.length; i++) {
-                    filteredStreams.push(filterCommands.some(cmd => cmd.includes(`[${i}:a]volume`)) ? `[a${i}]` : `[${i}:a]`);
+                    const volume = document.getElementById(`volume-${i}`).value;
+                    if (volume) {
+                        filterComplexParts.push(`[${i}:a]volume=${volume}[a${i}]`);
+                        filteredStreams.push(`[a${i}]`);
+                    } else {
+                        filteredStreams.push(`[${i}:a]`);
+                    }
                 }
                 
-                let filterComplexParts = [];
-                if (filterCommands.length > 0) {
-                    filterComplexParts.push(filterCommands.join(';'));
-                }
+                // 添加拼接命令
                 filterComplexParts.push(`${filteredStreams.join('')}concat=n=${files.length}:v=0:a=1[outa]`);
                 
+                // 生成完整的filter_complex参数
                 filterComplex = `-filter_complex "${filterComplexParts.join(';')}" -map "[outa]"`;
             } else {
                 // 单个文件：仅调整音量
-                if (filterCommands.length > 0) {
-                    filterComplex = `-filter:a "volume=${document.getElementById('volume-0').value}"`;
+                const volume = document.getElementById('volume-0').value;
+                if (volume) {
+                    filterComplex = `-filter:a "volume=${volume}"`;
                 }
             }
 
             // 生成FFmpeg命令
             let command = [];
-            inputFiles.forEach(file => command.push('-i', file));
-            if (filterComplex) command = command.concat(filterComplex.split(' '));
+            for (let i = 0; i < inputFiles.length; i++) {
+                command.push('-i', inputFiles[i]);
+            }
             
-            // 添加音频编码器参数，确保合并不同格式音频时能正确处理
+            // 添加filter_complex参数（如果有）
+            if (filterComplex) {
+                // 解析filterComplex为命令参数
+                const filterParts = filterComplex.split('"');
+                if (filterParts.length >= 3) {
+                    command.push('-filter_complex', filterParts[1]); // 取引号内的内容
+                }
+            }
+            
+            // 添加必要的编码器参数，确保合并不同格式音频时能正确处理
+            // 对于concat滤镜，我们需要明确指定编码器
             command.push('-c:a', 'libmp3lame');
+            command.push('-q:a', '4'); // 设置MP3质量
             
             command.push(outputFileName);
             
-            // 显示命令并存储上下文
-            ffmpegCommandInput.value = command.join(' ');
+            // 显示命令并存储上下文（添加ffmpeg前缀）
+            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
             ffmpegCommandInput.readOnly = false;
             commandGroup.classList.remove('hidden');
             currentContext = {
@@ -541,11 +561,12 @@
             // 生成FFmpeg命令
             const command = [
                 '-i', inputName,
+                '-c', 'copy',
                 outputFileName
             ];
             
-            // 显示命令并存储上下文
-            ffmpegCommandInput.value = command.join(' ');
+            // 显示命令并存储上下文（添加ffmpeg前缀）
+            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
             ffmpegCommandInput.readOnly = false;
             commandGroup.classList.remove('hidden');
             currentContext = {
@@ -576,17 +597,19 @@
             }
             
             // 写入文件
-            await ffmpeg.writeFile('input.video', new Uint8Array(await file.arrayBuffer()));
+            const originalExt = file.name.split('.').pop();
+            const inputName = `input.${originalExt}`;
+            await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
             
             // 生成FFmpeg命令
             const command = [
-                '-i', 'input.video',
+                '-i', inputName,
                 '-vn', // 不包含视频
                 outputFileName
             ];
             
-            // 显示命令并存储上下文
-            ffmpegCommandInput.value = command.join(' ');
+            // 显示命令并存储上下文（添加ffmpeg前缀）
+            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
             ffmpegCommandInput.readOnly = false;
             commandGroup.classList.remove('hidden');
             currentContext = {
@@ -618,18 +641,14 @@
             const outputExt = 'mp4';
             const outputFileName = getOutputFileName(outputExt);
             
-            // 写入所有文件
+            // 生成文件列表但不写入文件，文件将在执行命令时写入
             const inputFiles = [];
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
-                const originalExt = file.name.split('.').pop();
-                const inputName = `input${i}.${originalExt}`;
-                await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
-                inputFiles.push(inputName);
+                // 使用原始文件名作为输入，让命令更直观
+                const originalName = file.name;
+                inputFiles.push(originalName);
             }
-            
-            // 生成文件列表
-            await ffmpeg.writeFile('filelist.txt', inputFiles.map(f => `file '${f}'`).join('\n'));
             
             // 生成FFmpeg命令
             const command = [
@@ -640,13 +659,16 @@
                 outputFileName
             ];
             
-            // 显示命令并存储上下文
-            ffmpegCommandInput.value = command.join(' ');
+            // 显示命令并存储上下文（添加ffmpeg前缀）
+            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
             ffmpegCommandInput.readOnly = false;
             commandGroup.classList.remove('hidden');
             currentContext = {
                 type: 'merge-video',
-                data: { progressBar: document.getElementById('merge-video-progress') },
+                data: { 
+                    progressBar: document.getElementById('merge-video-progress'),
+                    files: files // 存储files对象，以便在执行命令时重新生成filelist.txt
+                },
                 outputExt: outputExt
             };
         }
@@ -658,9 +680,14 @@
                 return;
             }
 
-            const command = ffmpegCommandInput.value.split(' ').filter(Boolean);
+            let command = ffmpegCommandInput.value.split(' ').filter(Boolean);
             if (command.length === 0) return;
 
+            // 移除命令中的"ffmpeg"前缀（如果有）
+            if (command[0] === 'ffmpeg') {
+                command = command.slice(1);
+            }
+            
             const outputFileName = command[command.length - 1];
             const progressBar = currentContext.data.progressBar;
 
@@ -671,24 +698,58 @@
 
             // 执行命令
             try {
-                // 如果是音频合并任务，需要重新写入文件
+                // 对于需要多个输入文件的功能，重新写入文件
                 if (currentContext.type === 'merge-volume' && currentContext.data.files) {
                     const files = currentContext.data.files;
                     for (let i = 0; i < files.length; i++) {
                         const file = files[i];
-                        const inputName = `input${i}.wav`;
-                        // 先删除可能存在的旧文件，避免冲突
-                        try {
-                            await ffmpeg.unlink(inputName);
-                        } catch (e) {
-                            // 文件不存在，忽略错误
-                        }
-                        await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
+                        // 使用原始文件名作为输入，而不是固定的wav扩展名
+                        const originalName = file.name;
+                        await ffmpeg.writeFile(originalName, new Uint8Array(await file.arrayBuffer()));
                     }
                 }
                 
-                await ffmpeg.exec(command);
-                const data = await ffmpeg.readFile(outputFileName);
+                // 对于视频合并任务，重新生成filelist.txt
+                if (currentContext.type === 'merge-video' && currentContext.data.files) {
+                    const files = currentContext.data.files;
+                    const inputFiles = [];
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        // 使用原始文件名作为输入，让命令更直观
+                        const originalName = file.name;
+                        await ffmpeg.writeFile(originalName, new Uint8Array(await file.arrayBuffer()));
+                        inputFiles.push(originalName);
+                    }
+                    const filelistContent = inputFiles.map(f => `file '${f}'`).join('\n');
+                    await ffmpeg.writeFile('filelist.txt', filelistContent);
+                }
+                
+                console.log('执行FFmpeg命令:', command.join(' '));
+                const code = await ffmpeg.exec(command);
+                
+                if (code !== 0) {
+                    throw new Error(`FFmpeg执行失败，返回码: ${code}`);
+                }
+                
+                // 等待一点时间确保文件写入完成
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // 检查输出文件是否存在
+                let data;
+                try {
+                    data = await ffmpeg.readFile(outputFileName);
+                    console.log('输出文件读取成功，大小:', data.length, 'bytes');
+                } catch (e) {
+                    console.error('无法读取输出文件，可能未生成:', e);
+                    // 列出当前目录的文件，用于调试
+                    try {
+                        const files = await ffmpeg.listDir('/');
+                        console.log('虚拟文件系统中的文件:', files);
+                    } catch (listErr) {
+                        console.error('无法列出文件系统内容:', listErr);
+                    }
+                    throw new Error(`输出文件 ${outputFileName} 未生成或读取失败`);
+                }
                 
                 // 根据输出文件类型设置正确的MIME类型
                 const ext = outputFileName.split('.').pop();
@@ -701,8 +762,11 @@
                 a.download = outputFileName;
                 a.click();
                 URL.revokeObjectURL(url);
+                
+                alert('处理完成！文件已下载。');
             } catch (e) {
-                const errorMessage = e.message || JSON.stringify(e);
+                const errorMessage = e.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
+                console.error('FFmpeg执行错误:', e);
                 alert(`执行失败：${errorMessage}`);
             } finally {
                 progressBar.style.width = '0%';
