@@ -27,5 +27,7 @@
     "processing": "Processing...",
     "processing_complete": "Processing complete! File has been downloaded.",
     "ffmpeg_loading": "FFmpeg is loading, please wait!",
-    "execution_failed": "Execution failed:"
+    "execution_failed": "Execution failed:",
+    "download_progress_title": "Downloading...",
+    "download_progress_hint": "Please be patient, this file only needs to be downloaded successfully once. Do not refresh or close the page"
 }

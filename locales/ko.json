@@ -27,5 +27,7 @@
     "processing": "처리 중...",
     "processing_complete": "처리 완료! 파일이 다운로드되었습니다.",
     "ffmpeg_loading": "FFmpeg가 로드 중입니다. 잠시만 기다려 주세요!",
-    "execution_failed": "실행 실패:"
+    "execution_failed": "실행 실패:",
+    "download_progress_title": "다운로드 중...",
+    "download_progress_hint": "기다려 주세요. 이 파일은 한 번만 성공적으로 다운로드하면 됩니다. 페이지를 새로 고치거나 닫지 마십시오"
 }

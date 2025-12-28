@@ -27,5 +27,7 @@
     "processing": "処理中...",
     "processing_complete": "処理完了！ファイルがダウンロードされました。",
     "ffmpeg_loading": "FFmpegがロード中です、少々お待ちください！",
-    "execution_failed": "実行に失敗しました："
+    "execution_failed": "実行に失敗しました：",
+    "download_progress_title": "ダウンロード中...",
+    "download_progress_hint": "お待ちください。このファイルは一度だけ正常にダウンロードする必要があります。ページを更新または閉じないでください"
 }

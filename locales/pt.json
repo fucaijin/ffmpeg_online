@@ -27,5 +27,7 @@
     "processing": "Processando...",
     "processing_complete": "Processamento concluído! O arquivo foi baixado.",
     "ffmpeg_loading": "FFmpeg está carregando, por favor aguarde!",
-    "execution_failed": "Falha na execução:"  
+    "execution_failed": "Falha na execução:",
+    "download_progress_title": "Baixando...",
+    "download_progress_hint": "Por favor, seja paciente, este arquivo só precisa ser baixado com sucesso uma vez. Não atualize nem feche a página"
 }

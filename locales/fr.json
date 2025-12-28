@@ -27,5 +27,7 @@
     "processing": "Traitement en cours...",
     "processing_complete": "Traitement terminé ! Le fichier a été téléchargé.",
     "ffmpeg_loading": "FFmpeg est en cours de chargement, veuillez patienter !",
-    "execution_failed": "Échec de l'exécution:"
+    "execution_failed": "Échec de l'exécution :",
+    "download_progress_title": "Téléchargement en cours...",
+    "download_progress_hint": "Veuillez être patient, ce fichier n'a besoin d'être téléchargé avec succès qu'une seule fois. Ne rafraîchissez pas ni ne fermez la page"
 }

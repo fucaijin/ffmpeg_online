@@ -27,5 +27,7 @@
     "processing": "Memproses...",
     "processing_complete": "Proses selesai! File telah diunduh.",
     "ffmpeg_loading": "FFmpeg sedang dimuat, silakan tunggu!",
-    "execution_failed": "Eksekusi gagal:"  
+    "execution_failed": "Eksekusi gagal:",
+    "download_progress_title": "Mengunduh...",
+    "download_progress_hint": "Silakan bersabar, file ini hanya perlu diunduh berhasil sekali. Jangan refresh atau tutup halaman"
 }

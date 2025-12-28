@@ -27,5 +27,7 @@
     "processing": "Verarbeitung läuft...",
     "processing_complete": "Verarbeitung abgeschlossen! Die Datei wurde heruntergeladen.",
     "ffmpeg_loading": "FFmpeg wird geladen, bitte warten!",
-    "execution_failed": "Ausführung fehlgeschlagen:"  
+    "execution_failed": "Ausführung fehlgeschlagen:",
+    "download_progress_title": "Herunterladen...",
+    "download_progress_hint": "Bitte haben Sie Geduld, diese Datei muss nur einmal erfolgreich heruntergeladen werden. Nehmen Sie keine Aktualisierungen vor und schließen Sie die Seite nicht"
 }

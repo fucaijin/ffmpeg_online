@@ -27,5 +27,7 @@
     "processing": "處理中...",
     "processing_complete": "處理完成！文件已下載。",
     "ffmpeg_loading": "FFmpeg 正在加載中，請稍候！",
-    "execution_failed": "執行失敗："
+    "execution_failed": "執行失敗：",
+    "download_progress_title": "下載中...",
+    "download_progress_hint": "請耐心等待，該檔案僅需下載成功一次，請勿重新整理或關閉頁面"
 }

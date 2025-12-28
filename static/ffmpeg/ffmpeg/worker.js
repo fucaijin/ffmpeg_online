@@ -10,35 +10,152 @@ const load = async ({ coreURL: _coreURL, wasmURL: _wasmURL, workerURL: _workerUR
         if (!_coreURL)
             _coreURL = CORE_URL;
         
-        // Check if we're in a module worker
-        if (typeof importScripts === 'undefined' || _coreURL.includes('ffmpeg-core.js')) {
-            // when web worker type is `module` or loading local ffmpeg-core.js
-            // Directly import the ESM module
-            self.createFFmpegCore = (await import(
-            /* @vite-ignore */ _coreURL)).default;
-            if (!self.createFFmpegCore) {
-                throw ERROR_IMPORT_FAILURE;
+        // Ensure we're not trying to load from local file system
+        if (_coreURL.startsWith('file:')) {
+            _coreURL = CORE_URL; // Fallback to CDN URL
+        }
+        
+        // Check if we're in a module worker by trying to call importScripts
+        let isModuleWorker = false;
+        try {
+            if (typeof importScripts !== 'undefined') {
+                // Try to call importScripts with a dummy URL
+                importScripts('data:,');
+            } else {
+                isModuleWorker = true;
+            }
+        } catch (e) {
+            // If importScripts throws, we're in a module worker
+            isModuleWorker = true;
+        }
+        
+        console.log('Worker type:', isModuleWorker ? 'module' : 'classic');
+        
+        if (isModuleWorker) {
+            // MODULE WORKER PATH - ABSOLUTELY NO IMPORTSCRIPTS
+            console.log('Loading as module worker, using dynamic import');
+            
+            try {
+                // For module workers, always use CDN URL directly
+                // Blob URLs are too problematic in module workers
+                let finalUrl = _coreURL;
+                
+                // If it's a blob URL, switch to CDN
+                if (_coreURL.startsWith('blob:')) {
+                    finalUrl = CORE_URL.replace('/umd/', '/esm/');
+                    console.log('Switching from blob to CDN URL:', finalUrl);
+                }
+                
+                // Try to import the module
+                const module = await import(/* @vite-ignore */ finalUrl);
+                
+                // Try different export patterns
+                if (module.default && typeof module.default === 'function') {
+                    self.createFFmpegCore = module.default;
+                    console.log('Loaded createFFmpegCore from module.default');
+                } else if (module.createFFmpegCore && typeof module.createFFmpegCore === 'function') {
+                    self.createFFmpegCore = module.createFFmpegCore;
+                    console.log('Loaded createFFmpegCore from module.createFFmpegCore');
+                } else {
+                    throw new Error('No valid createFFmpegCore export found');
+                }
+            } catch (e) {
+                console.error('Dynamic import failed:', e.message);
+                throw new Error(`Failed to load ffmpeg-core in module worker: ${e.message}`);
             }
         } else {
-            // when web worker type is `classic`.
-            importScripts(_coreURL);
+            // CLASSIC WORKER PATH - CAN USE IMPORTSCRIPTS
+            console.log('Loading as classic worker, using importScripts');
+            
+            if (_coreURL.startsWith('blob:')) {
+                // For blob URLs in classic workers
+                const response = await fetch(_coreURL);
+                const scriptText = await response.text();
+                
+                // Create a new blob URL and use importScripts
+                const blob = new Blob([scriptText], { type: 'text/javascript' });
+                const blobUrl = URL.createObjectURL(blob);
+                
+                try {
+                    importScripts(blobUrl);
+                } finally {
+                    URL.revokeObjectURL(blobUrl);
+                }
+            } else {
+                // For regular URLs in classic workers
+                importScripts(_coreURL);
+            }
+            
+            // Ensure createFFmpegCore is available on self
+            if (typeof self.createFFmpegCore !== 'function') {
+                throw new Error('createFFmpegCore not found after importScripts');
+            }
+        }
+        
+        // Final check to ensure createFFmpegCore is available
+        if (typeof self.createFFmpegCore !== 'function') {
+            throw new Error('createFFmpegCore is not a function after loading');
         }
     }
     catch (error) {
-        if (!_coreURL || _coreURL === CORE_URL)
-            _coreURL = CORE_URL.replace('/umd/', '/esm/');
-        // Fallback to ESM import
-        self.createFFmpegCore = (await import(
-        /* @vite-ignore */ _coreURL)).default;
-        if (!self.createFFmpegCore) {
+        console.error('Error loading ffmpeg-core:', error);
+        
+        // Ultimate fallback: load from CDN using dynamic import for module workers
+        _coreURL = CORE_URL.replace('/umd/', '/esm/');
+        
+        try {
+            // Use dynamic import for all cases as fallback
+            // This works for both module and classic workers in modern browsers
+            const module = await import(/* @vite-ignore */ _coreURL);
+            
+            // Try different export patterns
+            if (module.default && typeof module.default === 'function') {
+                self.createFFmpegCore = module.default;
+            } else if (module.createFFmpegCore && typeof module.createFFmpegCore === 'function') {
+                self.createFFmpegCore = module.createFFmpegCore;
+            } else {
+                // Last resort for classic workers
+                if (typeof importScripts !== 'undefined') {
+                    importScripts(_coreURL);
+                }
+            }
+        } catch (fallbackError) {
+            console.error('Fallback loading failed:', fallbackError);
+        }
+        
+        // Final check
+        if (typeof self.createFFmpegCore !== 'function') {
             throw ERROR_IMPORT_FAILURE;
         }
     }
     const coreURL = _coreURL;
-    const wasmURL = _wasmURL ? _wasmURL : _coreURL.replace(/.js$/g, ".wasm");
-    const workerURL = _workerURL
+    let wasmURL = _wasmURL ? _wasmURL : _coreURL.replace(/.js$/g, ".wasm");
+    let workerURL = _workerURL
         ? _workerURL
         : _coreURL.replace(/.js$/g, ".worker.js");
+    
+    // Ensure wasmURL is not a local file
+    if (wasmURL.startsWith('file:')) {
+        wasmURL = CORE_URL.replace(/.js$/g, ".wasm");
+    }
+    
+    // Ensure workerURL is not a local file
+    if (workerURL.startsWith('file:')) {
+        workerURL = CORE_URL.replace(/.js$/g, ".worker.js");
+    }
+    
+    // If coreURL is a blob URL, ensure wasmURL and workerURL are also blob URLs
+    if (coreURL.startsWith('blob:')) {
+        // If wasmURL is not provided, we can't automatically generate it from blob URL
+        // So we'll use the CDN URL as fallback
+        if (!_wasmURL) {
+            wasmURL = CORE_URL.replace(/.js$/g, ".wasm");
+        }
+        // Same for workerURL
+        if (!_workerURL) {
+            workerURL = CORE_URL.replace(/.js$/g, ".worker.js");
+        }
+    }
     ffmpeg = await self.createFFmpegCore({
         // Fix `Overload resolution failed.` when using multi-threaded ffmpeg-core.
         // Encoded wasmURL and workerURL in the URL as a hack to fix locateFile issue.
