@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>前端音频处理工具 - 基于FFmpeg.wasm</title>
+    <title>音视频处理-在线ffmpeg - 基于FFmpeg.wasm</title>
     <style>
-        /* 语言切换按钮样式 */
+        /* 语言切换下拉列表样式 */
         .language-switch {
             position: absolute;
             top: 1rem;
             right: 1rem;
             display: flex;
-            gap: 0.5rem;
+            align-items: center;
         }
         
-        .language-switch button {
+        .language-switch select {
             padding: 0.5rem 1rem;
             background-color: #f8f9fa;
             color: #495057;
@@ -25,15 +25,12 @@
             transition: all 0.3s ease;
             width: auto;
             margin: 0;
+            outline: none;
         }
         
-        .language-switch button:hover {
+        .language-switch select:hover,
+        .language-switch select:focus {
             background-color: #e9ecef;
-        }
-        
-        .language-switch button.active {
-            background-color: #007bff;
-            color: white;
             border-color: #007bff;
         }
         
@@ -42,6 +39,7 @@
             .language-switch {
                 position: static;
                 margin-bottom: 1rem;
+                display: flex;
                 justify-content: center;
             }
         }
@@ -54,9 +52,25 @@
         body {
             margin: 2rem auto;
             padding: 0 1rem;
+            max-width: 1200px;
         }
         .container {
             margin-top: 2rem;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            body {
+                margin: 0;
+                max-width: 100%;
+                padding: 0 1rem;
+            }
+        }
+        
+        @media (min-width: 1920px) {
+            body {
+                max-width: 1400px;
+            }
         }
         .form-group {
             margin: 1.5rem 0;
@@ -355,10 +369,22 @@
     </style>
 </head>
 <body>
-    <!-- 语言切换按钮 -->
+    <!-- 语言切换下拉列表 -->
     <div class="language-switch">
-        <button id="lang-zh" class="active">中文</button>
-        <button id="lang-en">English</button>
+        <label for="language-select" style="margin-right: 0.5rem; font-weight: bold;">Language</label>
+        <select id="language-select">
+            <option value="zh" selected>中文</option>
+            <option value="zh-TW">繁體中文</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+            <option value="pt">Português</option>
+            <option value="ru">Русский</option>
+            <option value="id">Bahasa Indonesia</option>
+        </select>
     </div>
     
     <h1 data-i18n="title">前端音频处理工具</h1>
@@ -416,84 +442,40 @@
         // 使用本地FFmpeg依赖
         import { FFmpeg } from './static/ffmpeg/ffmpeg/index.js';
         
-        // 翻译映射
-        const translations = {
-            // 中文翻译
-            zh: {
-                title: '前端音频处理工具',
-                select_function: '选择功能',
-                please_select_function: '--请选择功能--',
-                convert_format_option: '[音频/视频]转换格式(音频提取、音频视频格式转换)',
-                merge_volume_option: '[音频/视频]截取、拼接与调整音量',
-                convert_format_title: '[音频/视频]转换格式',
-                select_file: '选择文件',
-                target_format: '目标格式',
-                generate_ffmpeg_command: '生成FFmpeg命令',
-                merge_volume_title: '[音频/视频]截取、拼接与调整音量',
-                select_files: '选择文件',
-                add_more_files: '添加文件',
-                ffmpeg_command_label: 'FFmpeg 命令（可手动修改）',
-                confirm_and_execute: '确认命令并执行',
-                volume_adjust: '音量调整（分贝，不输入则不调整，如 2 或 -3）',
-                no_adjust: '不调整请留空',
-                trim_settings: '截取设置',
-                start_time: '开始时间：',
-                end_time: '结束时间：',
-                duration: '时长：',
-                play: '播放',
-                pause: '暂停',
-                delete: '删除',
-                video_label: '[视频]',
-                audio_label: '[音频]',
-                processing: '处理中...',
-                processing_complete: '处理完成！文件已下载。',
-                ffmpeg_loading: 'FFmpeg 正在加载中，请稍候！',
-                execution_failed: '执行失败：'
-            },
-            // 英文翻译
-            en: {
-                title: 'Frontend Audio Processing Tool',
-                select_function: 'Select Function',
-                please_select_function: '--Please Select Function--',
-                convert_format_option: '[Audio/Video] Convert Format (Extract Audio, Audio/Video Format Conversion)',
-                merge_volume_option: '[Audio/Video] Trim, Merge & Adjust Volume',
-                convert_format_title: '[Audio/Video] Convert Format',
-                select_file: 'Select File',
-                target_format: 'Target Format',
-                generate_ffmpeg_command: 'Generate FFmpeg Command',
-                merge_volume_title: '[Audio/Video] Trim, Merge & Adjust Volume',
-                select_files: 'Select Files',
-                add_more_files: 'Add More Files',
-                ffmpeg_command_label: 'FFmpeg Command (Can be modified manually)',
-                confirm_and_execute: 'Confirm Command & Execute',
-                volume_adjust: 'Volume Adjustment (dB, leave blank for no adjustment, e.g., 2 or -3)',
-                no_adjust: 'Leave blank for no adjustment',
-                trim_settings: 'Trim Settings',
-                start_time: 'Start Time:',
-                end_time: 'End Time:',
-                duration: 'Duration:',
-                play: 'Play',
-                pause: 'Pause',
-                delete: 'Delete',
-                video_label: '[Video]',
-                audio_label: '[Audio]',
-                processing: 'Processing...',
-                processing_complete: 'Processing complete! File has been downloaded.',
-                ffmpeg_loading: 'FFmpeg is loading, please wait!',
-                execution_failed: 'Execution failed: '
-            }
-        };
-
         // 当前语言
         let currentLanguage = 'zh';
+        // 已加载的语言包缓存
+        const loadedTranslations = {};
+
+        // 加载语言包
+        async function loadLanguage(lang) {
+            if (loadedTranslations[lang]) {
+                return loadedTranslations[lang];
+            }
+            
+            try {
+                const response = await fetch(`./locales/${lang}.json`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load language file: ${lang}`);
+                }
+                const translations = await response.json();
+                loadedTranslations[lang] = translations;
+                return translations;
+            } catch (error) {
+                console.error('Error loading language:', error);
+                return {};
+            }
+        }
 
         // 翻译函数
-        function translate() {
+        async function translate() {
+            const translations = await loadLanguage(currentLanguage);
+            
             const elements = document.querySelectorAll('[data-i18n]');
             elements.forEach(element => {
                 const key = element.getAttribute('data-i18n');
-                if (translations[currentLanguage][key]) {
-                    element.textContent = translations[currentLanguage][key];
+                if (translations[key]) {
+                    element.textContent = translations[key];
                 }
             });
             
@@ -505,21 +487,16 @@
             if (ffmpegCommandInput) {
                 ffmpegCommandInput.placeholder = currentLanguage === 'zh' ? 'FFmpeg命令将在此处生成...' : 'FFmpeg command will be generated here...';
             }
+            
+            // 触发语言变化事件
+            document.dispatchEvent(new CustomEvent('languageChanged'));
         }
 
-        // 初始化语言切换按钮事件
-        document.getElementById('lang-zh').addEventListener('click', () => {
-            currentLanguage = 'zh';
-            document.getElementById('lang-zh').classList.add('active');
-            document.getElementById('lang-en').classList.remove('active');
-            translate();
-        });
-
-        document.getElementById('lang-en').addEventListener('click', () => {
-            currentLanguage = 'en';
-            document.getElementById('lang-en').classList.add('active');
-            document.getElementById('lang-zh').classList.remove('active');
-            translate();
+        // 初始化语言切换下拉列表事件
+        const languageSelect = document.getElementById('language-select');
+        languageSelect.addEventListener('change', async () => {
+            currentLanguage = languageSelect.value;
+            await translate();
         });
         
         const ffmpeg = new FFmpeg({ 
@@ -543,6 +520,184 @@
             data: null,
             outputExt: ''
         };
+        
+        // IndexDB缓存管理
+        class FFmpegCache {
+            constructor() {
+                this.dbName = 'ffmpeg-cache';
+                this.storeName = 'ffmpeg-files';
+                this.dbVersion = 1;
+            }
+            
+            // 打开数据库
+            async openDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.dbVersion);
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(this.storeName)) {
+                            db.createObjectStore(this.storeName, { keyPath: 'name' });
+                        }
+                    };
+                    
+                    request.onsuccess = (event) => {
+                        resolve(event.target.result);
+                    };
+                    
+                    request.onerror = (event) => {
+                        reject('Failed to open IndexedDB: ' + event.target.error);
+                    };
+                });
+            }
+            
+            // 从缓存中获取文件
+            async getFile(name) {
+                try {
+                    const db = await this.openDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction(this.storeName, 'readonly');
+                        const store = transaction.objectStore(this.storeName);
+                        const request = store.get(name);
+                        
+                        request.onsuccess = (event) => {
+                            resolve(event.target.result ? event.target.result.content : null);
+                        };
+                        
+                        request.onerror = (event) => {
+                            reject('Failed to get file from cache: ' + event.target.error);
+                        };
+                    });
+                } catch (error) {
+                    console.error('Error getting file from cache:', error);
+                    return null;
+                }
+            }
+            
+            // 将文件存入缓存
+            async saveFile(name, content) {
+                try {
+                    const db = await this.openDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction(this.storeName, 'readwrite');
+                        const store = transaction.objectStore(this.storeName);
+                        const request = store.put({ name, content });
+                        
+                        request.onsuccess = () => {
+                            resolve();
+                        };
+                        
+                        request.onerror = (event) => {
+                            reject('Failed to save file to cache: ' + event.target.error);
+                        };
+                    });
+                } catch (error) {
+                    console.error('Error saving file to cache:', error);
+                }
+            }
+        }
+        
+        const ffmpegCache = new FFmpegCache();
+        
+        // 从URL数组中加载资源，失败时尝试下一个URL
+        async function loadResourceWithFallback(urls, resourceName) {
+            // 首先检查缓存
+            const cachedContent = await ffmpegCache.getFile(resourceName);
+            if (cachedContent) {
+                console.log(`Using cached ${resourceName}, size: ${(cachedContent.size / 1024 / 1024).toFixed(2)}MB`);
+                return URL.createObjectURL(cachedContent);
+            }
+            
+            // 没有缓存，尝试从URL加载
+            for (const url of urls) {
+                try {
+                    console.log(`\n=== Loading ${resourceName} from ${url} ===`);
+                    
+                    // 清除可能存在的旧缓存
+                    await caches.delete(url);
+                    
+                    // 使用默认缓存控制，避免CORS问题
+                    const response = await fetch(url, {
+                        cache: 'reload', // 强制重新加载，不使用缓存
+                        mode: 'cors' // 确保使用CORS模式
+                    });
+                    
+                    // 记录完整的响应信息
+                    console.log(`Response status: ${response.status}`);
+                    console.log(`Response headers:`, Object.fromEntries(response.headers));
+                    console.log(`Content-Type: ${response.headers.get('Content-Type')}`);
+                    console.log(`Content-Length: ${response.headers.get('Content-Length')}`);
+                    console.log(`Access-Control-Allow-Origin: ${response.headers.get('Access-Control-Allow-Origin')}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    // 使用流式读取，确保文件完整下载
+                    const reader = response.body.getReader();
+                    const chunks = [];
+                    let totalSize = 0;
+                    
+                    console.log(`Starting to read response body...`);
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        chunks.push(value);
+                        totalSize += value.length;
+                        console.log(`Received chunk: ${value.length} bytes, total: ${(totalSize / 1024).toFixed(2)}KB`);
+                    }
+                    
+                    console.log(`Finished reading response body, total size: ${(totalSize / 1024).toFixed(2)}KB`);
+                    
+                    // 合并所有chunk
+                    const concatenated = new Uint8Array(totalSize);
+                    let offset = 0;
+                    for (const chunk of chunks) {
+                        concatenated.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+                    
+                    // 创建blob
+                    const blob = new Blob([concatenated], { type: response.headers.get('Content-Type') });
+                    
+                    console.log(`Created blob from chunks`);
+                    console.log(`Blob size: ${(blob.size / 1024).toFixed(2)}KB (${(blob.size / 1024 / 1024).toFixed(2)}MB)`);
+                    console.log(`Blob type: ${blob.type}`);
+                    
+                    // 检查文件大小是否合理，wasm文件应该在30MB左右
+                    if (resourceName.includes('wasm')) {
+                        if (blob.size < 10 * 1024 * 1024) {
+                            // 读取blob内容，看看返回的是什么
+                            const textReader = new FileReader();
+                            textReader.onload = function(e) {
+                                console.log(`\n=== BLOB CONTENT (first 500 chars) ===`);
+                                console.log(e.target.result.substring(0, 500));
+                                console.log(`=== END OF BLOB CONTENT ===`);
+                            };
+                            textReader.readAsText(blob);
+                            
+                            throw new Error(`File size too small: ${(blob.size / 1024).toFixed(2)}KB, expected ~31MB`);
+                        }
+                    }
+                    
+                    // 存入缓存
+                    await ffmpegCache.saveFile(resourceName, blob);
+                    
+                    console.log(`Saved to cache, returning object URL`);
+                    return URL.createObjectURL(blob);
+                } catch (error) {
+                    console.error(`\n=== FAILED to load ${resourceName} from ${url} ===`);
+                    console.error(`Error type: ${error.name}`);
+                    console.error(`Error message: ${error.message}`);
+                    console.error(`Error stack: ${error.stack}`);
+                    console.error(`=== END OF ERROR ===`);
+                    // 继续尝试下一个URL
+                }
+            }
+            
+            throw new Error(`Failed to load ${resourceName} from all URLs`);
+        }
 
         // DOM元素
         const functionSelect = document.getElementById('function-select');
@@ -554,7 +709,10 @@
         const audioItemsContainer = document.getElementById('audio-items-container');
         
         // 初始化翻译
-        translate();
+        (async () => {
+            await loadLanguage(currentLanguage);
+            await translate();
+        })();
 
         // 功能切换
         functionSelect.addEventListener('change', (e) => {
@@ -572,6 +730,11 @@
             // 预加载FFmpeg
             if (!ffmpegLoaded) loadFFmpeg();
         });
+        
+        // 监听语言变化，重新渲染文件列表
+        document.addEventListener('languageChanged', () => {
+            renderFileItems();
+        });
 
         // 加载FFmpeg核心
         async function loadFFmpeg() {
@@ -587,15 +750,31 @@
             
             // 创建新的加载Promise
             loadFFmpegPromise = (async () => {
-                // 使用绝对URL，确保在模块类型worker中能正确加载
-                const coreURL = `${window.location.origin}/static/ffmpeg/ffmpeg-core.js`;
-                const wasmURL = `https://fucaijin-1255906968.cos.ap-guangzhou.myqcloud.com/ffmpeg-core.wasm`;
-                
-                await ffmpeg.load({
-                    coreURL: coreURL,
-                    wasmURL: wasmURL,
-                });
-                ffmpegLoaded = true;
+                try {
+                    // 使用绝对URL，确保在模块类型worker中能正确加载
+                    const coreUrls = [
+                        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+                        'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.js'
+                    ];
+                    const wasmUrls = [
+                        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+                        'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.wasm'
+                    ];
+                    
+                    // 加载资源，带失败重试和缓存
+                    const coreURL = await loadResourceWithFallback(coreUrls, 'ffmpeg-core.js');
+                    const wasmURL = await loadResourceWithFallback(wasmUrls, 'ffmpeg-core.wasm');
+                    
+                    await ffmpeg.load({
+                        coreURL: coreURL,
+                        wasmURL: wasmURL,
+                    });
+                    ffmpegLoaded = true;
+                } catch (error) {
+                    // 加载失败，重置Promise以便下次调用可以重新尝试
+                    loadFFmpegPromise = null;
+                    throw error;
+                }
             })();
             
             // 等待加载完成
@@ -687,67 +866,74 @@
         }
 
         async function generateConvertCommand() {
-            const file = document.getElementById('convert-file').files[0];
-            const format = document.getElementById('convert-format').value;
-            const outputFileName = getOutputFileName(format);
-            
-            // 确保FFmpeg已经加载完成
-            if (!ffmpegLoaded) {
-                await loadFFmpeg();
-            }
-            
-            // 写入文件
-            const originalExt = file.name.split('.').pop();
-            const inputName = `input.${originalExt}`;
-            await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
-            
-            // 检测文件类型和输出格式类型
-            const isVideoInput = file.type.startsWith('video/');
-            const isAudioInput = file.type.startsWith('audio/');
-            const isAudioOutput = audioFormats.includes(format);
-            const isVideoOutput = videoFormats.includes(format);
-            
-            // 生成FFmpeg命令
-            const command = ['-i', inputName];
-            
-            if (isVideoInput && isAudioOutput) {
-                // 视频转音频 - 提取音频
-                command.push('-vn'); // 不包含视频
-                if (audioFormats.includes(format)) {
-                    // 如果输出是音频格式，使用适当的编码器
+            try {
+                const file = document.getElementById('convert-file').files[0];
+                const format = document.getElementById('convert-format').value;
+                const outputFileName = getOutputFileName(format);
+                
+                // 确保FFmpeg已经加载完成
+                if (!ffmpegLoaded) {
+                    await loadFFmpeg();
+                }
+                
+                // 写入文件
+                const originalExt = file.name.split('.').pop();
+                const inputName = `input.${originalExt}`;
+                await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
+                
+                // 检测文件类型和输出格式类型
+                const isVideoInput = file.type.startsWith('video/');
+                const isAudioInput = file.type.startsWith('audio/');
+                const isAudioOutput = audioFormats.includes(format);
+                const isVideoOutput = videoFormats.includes(format);
+                
+                // 生成FFmpeg命令
+                const command = ['-i', inputName];
+                
+                if (isVideoInput && isAudioOutput) {
+                    // 视频转音频 - 提取音频
+                    command.push('-vn'); // 不包含视频
+                    if (audioFormats.includes(format)) {
+                        // 如果输出是音频格式，使用适当的编码器
+                        command.push('-c:a', getAudioCodecForFormat(format));
+                    } else {
+                        command.push('-acodec', 'copy');
+                    }
+                } else if (isAudioInput && isVideoOutput) {
+                    // 音频转视频 - 生成无画面视频
+                    command.push('-f', 'lavfi', '-i', 'color=c=black:s=16x16:r=1');
+                    command.push('-c:v', 'libx264');
+                    command.push('-c:a', getAudioCodecForFormat(format));
+                    command.push('-shortest');
+                } else if (isAudioInput && isAudioOutput) {
+                    // 音频转音频 - 不同格式需要重新编码
+                    command.push('-c:a', getAudioCodecForFormat(format));
+                } else if (isVideoInput && isVideoOutput) {
+                    // 视频转视频
+                    command.push('-c:v', 'libx264');
                     command.push('-c:a', getAudioCodecForFormat(format));
                 } else {
-                    command.push('-acodec', 'copy');
+                    // 其他情况 - 尝试直接复制
+                    command.push('-c', 'copy');
                 }
-            } else if (isAudioInput && isVideoOutput) {
-                // 音频转视频 - 生成无画面视频
-                command.push('-f', 'lavfi', '-i', 'color=c=black:s=16x16:r=1');
-                command.push('-c:v', 'libx264');
-                command.push('-c:a', getAudioCodecForFormat(format));
-                command.push('-shortest');
-            } else if (isAudioInput && isAudioOutput) {
-                // 音频转音频 - 不同格式需要重新编码
-                command.push('-c:a', getAudioCodecForFormat(format));
-            } else if (isVideoInput && isVideoOutput) {
-                // 视频转视频
-                command.push('-c:v', 'libx264');
-                command.push('-c:a', getAudioCodecForFormat(format));
-            } else {
-                // 其他情况 - 尝试直接复制
-                command.push('-c', 'copy');
+                
+                command.push(outputFileName);
+                
+                // 显示命令并存储上下文（添加ffmpeg前缀）
+                ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
+                ffmpegCommandInput.readOnly = false;
+                commandGroup.classList.remove('hidden');
+                currentContext = {
+                    type: 'convert',
+                    data: { progressBar: document.getElementById('convert-progress') },
+                    outputExt: format
+                };
+            } catch (error) {
+                const errorMessage = error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+                console.error('生成转换命令错误:', error);
+                const t = loadedTranslations[currentLanguage] || {};
+                alert(`${t.generating_command_failed || '生成命令失败：'}${errorMessage}`);
             }
-            
-            command.push(outputFileName);
-            
-            // 显示命令并存储上下文（添加ffmpeg前缀）
-            ffmpegCommandInput.value = `ffmpeg ${command.join(' ')}`;
-            ffmpegCommandInput.readOnly = false;
-            commandGroup.classList.remove('hidden');
-            currentContext = {
-                type: 'convert',
-                data: { progressBar: document.getElementById('convert-progress') },
-                outputExt: format
-            };
         }
 
         // ---------------------- 截取、拼接与调整音量功能 ----------------------
@@ -815,7 +1001,7 @@
                 const isAudio = file.type.startsWith('audio/');
                 
                 // 获取当前语言的翻译
-                const t = translations[currentLanguage];
+                const t = loadedTranslations[currentLanguage] || {};
                 
                 itemDiv.innerHTML = `
                     <div class="item-header">
@@ -1171,12 +1357,13 @@
         };
 
         async function generateMergeVolumeCommand() {
-            if (selectedFiles.length === 0) return;
+            try {
+                if (selectedFiles.length === 0) return;
 
-            // 确保FFmpeg已经加载完成
-            if (!ffmpegLoaded) {
-                await loadFFmpeg();
-            }
+                // 确保FFmpeg已经加载完成
+                if (!ffmpegLoaded) {
+                    await loadFFmpeg();
+                }
 
             const inputFiles = [];
             let outputExt = 'mp3';
@@ -1350,12 +1537,18 @@
                 },
                 outputExt: outputExt
             };
+            } catch (error) {
+                const errorMessage = error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+                console.error('生成合并音量命令错误:', error);
+                const t = loadedTranslations[currentLanguage] || {};
+                alert(`${t.generating_command_failed || '生成命令失败：'}${errorMessage}`);
+            }
         }
 
         // ---------------------- 确认命令并执行 ----------------------
         confirmCommandBtn.addEventListener('click', async () => {
             if (!ffmpegLoaded) {
-                alert(translations[currentLanguage].ffmpeg_loading);
+                alert((loadedTranslations[currentLanguage] || {}).ffmpeg_loading || 'FFmpeg 正在加载中，请稍候！');
                 return;
             }
 
@@ -1427,7 +1620,7 @@
                 a.click();
                 URL.revokeObjectURL(url);
                 
-                alert(translations[currentLanguage].processing_complete);
+                alert((loadedTranslations[currentLanguage] || {}).processing_complete || '处理完成！文件已下载。');
             } catch (e) {
                 const errorMessage = e.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
                 console.error('FFmpeg执行错误:', e);
@@ -1438,7 +1631,8 @@
                     ffmpegLogs.forEach(log => console.log(log));
                 }
                 
-                alert(`${translations[currentLanguage].execution_failed}${errorMessage}\n详细日志请查看浏览器控制台`);
+                const t = loadedTranslations[currentLanguage] || {};
+                alert(`${t.execution_failed || '执行失败：'}${errorMessage}\n详细日志请查看浏览器控制台`);
             } finally {
                 progressBar.style.width = '0%';
                 // 清空日志数组
