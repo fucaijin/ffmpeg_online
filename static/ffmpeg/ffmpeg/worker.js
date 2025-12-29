@@ -36,17 +36,17 @@ const load = async ({ coreURL: _coreURL, wasmURL: _wasmURL, workerURL: _workerUR
             console.log('Loading as module worker, using dynamic import');
             
             try {
-                // For module workers, always use CDN URL directly
-                // Blob URLs are too problematic in module workers
+                // Respect the provided coreURL, whether it's local or remote
                 let finalUrl = _coreURL;
                 
-                // If it's a blob URL, switch to CDN
-                if (_coreURL.startsWith('blob:')) {
+                // Only switch to CDN if the URL is a blob URL or file URL
+                if (_coreURL.startsWith('blob:') || _coreURL.startsWith('file:')) {
                     finalUrl = CORE_URL.replace('/umd/', '/esm/');
-                    console.log('Switching from blob to CDN URL:', finalUrl);
+                    console.log('Switching from blob/file to CDN URL:', finalUrl);
                 }
                 
                 // Try to import the module
+                console.log('Attempting to load from URL:', finalUrl);
                 const module = await import(/* @vite-ignore */ finalUrl);
                 
                 // Try different export patterns
@@ -134,26 +134,32 @@ const load = async ({ coreURL: _coreURL, wasmURL: _wasmURL, workerURL: _workerUR
         ? _workerURL
         : _coreURL.replace(/.js$/g, ".worker.js");
     
-    // Ensure wasmURL is not a local file
+    // Log the URLs for debugging
+    console.log('Core URL:', coreURL);
+    console.log('WASM URL:', wasmURL);
+    console.log('Worker URL:', workerURL);
+    
+    // Only switch to CDN URLs if the URLs are file URLs or blob URLs that don't have corresponding files
+    // For HTTP URLs (like our local server), keep using them
     if (wasmURL.startsWith('file:')) {
         wasmURL = CORE_URL.replace(/.js$/g, ".wasm");
+        console.log('Switched WASM URL to CDN:', wasmURL);
     }
     
-    // Ensure workerURL is not a local file
     if (workerURL.startsWith('file:')) {
         workerURL = CORE_URL.replace(/.js$/g, ".worker.js");
+        console.log('Switched Worker URL to CDN:', workerURL);
     }
     
-    // If coreURL is a blob URL, ensure wasmURL and workerURL are also blob URLs
+    // If coreURL is a blob URL, ensure wasmURL and workerURL are also blob URLs or valid HTTP URLs
     if (coreURL.startsWith('blob:')) {
-        // If wasmURL is not provided, we can't automatically generate it from blob URL
-        // So we'll use the CDN URL as fallback
         if (!_wasmURL) {
             wasmURL = CORE_URL.replace(/.js$/g, ".wasm");
+            console.log('Core is blob, using CDN for WASM:', wasmURL);
         }
-        // Same for workerURL
         if (!_workerURL) {
             workerURL = CORE_URL.replace(/.js$/g, ".worker.js");
+            console.log('Core is blob, using CDN for Worker:', workerURL);
         }
     }
     ffmpeg = await self.createFFmpegCore({

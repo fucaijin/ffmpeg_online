@@ -507,6 +507,9 @@
         </div>
     </div>
 
+    <!-- 加载分块加载脚本 -->
+    <script src="./static/ffmpeg/chunked-loader.js"></script>
+    
     <script type="module">
         // 使用本地FFmpeg依赖
         import { FFmpeg } from './static/ffmpeg/ffmpeg/index.js';
@@ -860,19 +863,47 @@
             // 创建新的加载Promise
             loadFFmpegPromise = (async () => {
                 try {
-                    // 使用绝对URL，确保在模块类型worker中能正确加载
-                    const coreUrls = [
-                        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-                        'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.js'
-                    ];
-                    const wasmUrls = [
-                        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
-                        'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.wasm'
-                    ];
+                    // 使用本地的ffmpeg-core.js文件 - 使用绝对路径避免路径重复问题
+                    const coreURL = '/static/ffmpeg/ffmpeg-core.js';
                     
-                    // 加载资源，带失败重试和缓存
-                    const coreURL = await loadResourceWithFallback(coreUrls, 'ffmpeg-core.js');
-                    const wasmURL = await loadResourceWithFallback(wasmUrls, 'ffmpeg-core.wasm');
+                    // 等待ffmpegLoader可用
+                    if (!window.ffmpegLoader) {
+                        await new Promise(resolve => {
+                            const checkLoader = () => {
+                                if (window.ffmpegLoader) {
+                                    resolve();
+                                } else {
+                                    setTimeout(checkLoader, 100);
+                                }
+                            };
+                            checkLoader();
+                        });
+                    }
+                    
+                    // 等待wasm文件加载完成
+                    if (!window.ffmpegLoader.getCachedWasmFile) {
+                        await new Promise(resolve => {
+                            window.addEventListener('wasmLoaded', resolve);
+                        });
+                    }
+                    
+                    // 从分块加载器获取wasm文件
+                    const wasmBlob = await window.ffmpegLoader.getCachedWasmFile();
+                    let wasmURL;
+                    
+                    if (wasmBlob) {
+                        // 如果有缓存的wasmBlob，使用它
+                        console.log('Using cached wasm blob');
+                        wasmURL = URL.createObjectURL(wasmBlob);
+                    } else {
+                        // 否则，使用本地的wasm文件URL
+                        console.log('Using local wasm file URL');
+                        wasmURL = '/static/ffmpeg/ffmpeg-core.wasm';
+                    }
+                    
+                    console.log('Loading FFmpeg with:');
+                    console.log('  coreURL:', coreURL);
+                    console.log('  wasmURL:', wasmURL);
                     
                     await ffmpeg.load({
                         coreURL: coreURL,
