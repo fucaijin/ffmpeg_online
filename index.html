@@ -1651,8 +1651,19 @@
                 const hasVideo = selectedFiles.some(file => file.type.startsWith('video/'));
                 const hasAudio = selectedFiles.some(file => file.type.startsWith('audio/'));
                 
-                if (hasVideo) command.push('-map', '[outv]');
-                if (hasAudio) command.push('-map', '[outa]');
+                if (selectedFiles.length > 1) {
+                    // 多个文件需要拼接，使用[outv]和[outa]标签
+                    if (hasVideo) command.push('-map', '[outv]');
+                    if (hasAudio) command.push('-map', '[outa]');
+                } else {
+                    // 单个文件，直接映射处理后的流标签
+                    if (hasVideo && processedVideoStreams.length > 0) {
+                        command.push('-map', processedVideoStreams[0]);
+                    }
+                    if (hasAudio && processedAudioStreams.length > 0) {
+                        command.push('-map', processedAudioStreams[0]);
+                    }
+                }
             }
             
             // 添加必要的编码器参数
